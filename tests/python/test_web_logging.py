@@ -213,6 +213,8 @@ def test_dashboard_snapshot_retries_are_bounded_and_failures_are_isolated():
     assert "std::chrono::minutes(5)" in snapshot
     assert '"upstox-stale"' in snapshot
     assert '"snapshot_age_seconds"' in snapshot
+    assert "Renew UPSTOX_ACCESS_TOKEN and restart the dashboard." in snapshot
+    assert "isAccessTokenStale(snapshotRefreshError_)" in snapshot
     assert snapshot.index("fresh->created =") > snapshot.index('client_.getNews("holdings")')
     assert "last successful news snapshot" in snapshot
     assert "Portfolio news is temporarily unavailable." in snapshot
@@ -235,7 +237,7 @@ def test_snapshot_failure_keeps_last_good_data_and_resolves_fallback_from_projec
         "\nstd::string WebServer::fundamentalsAnalysis", 1
     )[0]
 
-    assert snapshot.index("if (current) return staleSnapshot(current)") < snapshot.index(
+    assert snapshot.index("if (current) return staleSnapshot(") < snapshot.index(
         "const json fallback = localHoldings(holdingsFile_)"
     )
     assert "std::filesystem::path projectRoot()" in source
@@ -255,7 +257,7 @@ def test_web_server_handles_slow_snapshots_concurrently_with_a_connection_limit(
 
     assert "std::unique_lock<std::mutex> refreshLock(refreshMutex_, std::try_to_lock)" in snapshot
     assert "if (!refreshLock.owns_lock())" in snapshot
-    assert "if (current) return staleSnapshot(current)" in snapshot
+    assert "if (current) return staleSnapshot(current, tokenExpired)" in snapshot
     assert "maxConcurrentConnections = 8" in server
     assert "std::thread([this, connection, &activeConnections]" in server
     assert '"503 Service Unavailable"' in server
@@ -370,3 +372,46 @@ def test_operations_download_uses_safe_csv_from_authenticated_holdings():
     assert "text.replace(/\"/g,'\"\"')" in exporter
     assert "formula" in exporter or "numeric" in exporter
     assert "URL.revokeObjectURL(url)" in exporter
+
+
+def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    optimization = source.split("const char* dashboardPageOptimization()", 1)[1].split(
+        "\nconst char* releaseNoticeV2036Addendum()", 1
+    )[0]
+    refresh = source.split("function refreshView()", 1)[1].split(
+        "const baseSafeJsonFetch", 1
+    )[0]
+    release = source.split("const char* releaseNoticeV2050Addendum()", 1)[1].split(
+        "\nstd::string dashboardVersion()", 1
+    )[0]
+    session_recovery = source.split("const char* dashboardSessionRecovery()", 1)[1].split(
+        "\nstd::string dashboardVersion()", 1
+    )[0]
+    snapshot = source.split(
+        "std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh) const",
+        1,
+    )[1].split("\nint WebServer::run()", 1)[0]
+
+    assert "'Unavailable · renew token':'Unavailable · live data offline'" in optimization
+    assert "const originalFail=fail" in optimization
+    assert "Renew UPSTOX_ACCESS_TOKEN and restart the dashboard." in optimization
+    assert "window.summaryDashboard=async function()" in optimization
+    assert ".metric-refresh:disabled" in optimization
+    assert "inlineButtons.forEach(item=>{item.disabled=true" in refresh
+    assert "item.textContent='Refresh now'" in refresh
+    assert "Reliable refresh and token guidance · v2.0.51" in release
+    assert "Refresh cannot renew the server-side credential" in release
+    assert "response.redirected&&new URL(response.url,window.location.origin).pathname==='/login'" in session_recovery
+    assert "window.location.replace('/login')" in session_recovery
+    assert "dashboardSessionRecovery()" in source
+    assert "Upstox access token expired or unauthorized; displaying the last successful portfolio snapshot." in snapshot
+
+
+def test_patch_release_version_is_aligned_across_build_and_readmes():
+    root = Path(__file__).parents[2]
+    assert "VERSION 2.0.51" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.51"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.51"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.51" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.51`" in (root / "design" / "README.md").read_text()

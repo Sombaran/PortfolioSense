@@ -350,7 +350,7 @@ const char* dashboardResponsiveLayout() {
 }
 
 const char* dashboardPageOptimization() {
-    return R"JS(<script>(function(){const style=document.createElement('style');style.textContent='#view .panel,#view .metric,#view .story{content-visibility:auto;contain-intrinsic-size:auto 220px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}';document.head.appendChild(style)})()</script>)JS";
+    return R"JS(<script>(function(){const style=document.createElement('style');style.textContent='#view .panel,#view .metric,#view .story{content-visibility:auto;contain-intrinsic-size:auto 220px}.metric-refresh{padding:7px 10px;border:1px solid var(--teal);border-radius:3px;background:var(--teal);color:#fff;cursor:pointer;font:700 12px Arial,sans-serif}.metric-refresh:hover{filter:brightness(.92)}.metric-refresh:disabled{opacity:.65;cursor:wait}.metric-refresh:focus-visible{outline:2px solid var(--orange);outline-offset:2px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}';document.head.appendChild(style);const originalNormalize=normalizeRefreshMetric;normalizeRefreshMetric=function(){originalNormalize();if(activeTab!=='overview')return;const metric=[...view.querySelectorAll('.metric')].find(item=>item.querySelector('.label')?.textContent==='Market value');const value=metric?.querySelector('b');if(!value||cache.holdings?.source==='upstox-live')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));const unavailable=tokenExpired?'Unavailable · renew token':'Unavailable · live data offline';if(value.textContent!==unavailable)value.textContent=unavailable};const originalFail=fail;fail=function(error){const warning=String(cache.holdings?.warning||'');if(/token.{0,30}(expired|unauthorized)|401|403/i.test(warning)&&!/token|401|403|unauthorized|forbidden/i.test(String(error?.message||error)))error=new Error('Upstox access token expired or unauthorized. Renew UPSTOX_ACCESS_TOKEN and restart the dashboard.');originalFail(error)};const originalSummary=window.summaryDashboard;if(originalSummary)window.summaryDashboard=async function(){await originalSummary();if(activeTab!=='summary')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));if(tokenExpired)return;view.querySelectorAll('.metric b').forEach(value=>{if(value.textContent.trim()==='Unavailable · renew token')value.textContent='Unavailable · live data offline'});view.querySelectorAll('td').forEach(cell=>{if(cell.textContent.includes('Renew the access token to restore live valuation.'))cell.textContent='Reconnect to restore live valuation.'})}})()</script>)JS";
 }
 
 const char* releaseNoticeV2036Addendum() {
@@ -410,12 +410,16 @@ const char* releaseNoticeV2049Addendum() {
 }
 
 const char* releaseNoticeV2050Addendum() {
-    return R"JS(<script>const releaseBox2050=document.querySelector('[role="dialog"]');if(releaseBox2050){releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Stale executable prevention · v2.0.50</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the launcher reusing an existing binary even after source updates. Normal startup now rebuilds the application when source or build metadata is newer, so the displayed version and running fixes match the current project. Existing cached-data recovery and Stock API security controls remain in place.</p>')}</script>)JS";
+    return R"JS(<script>const releaseBox2050=document.querySelector('[role="dialog"]');if(releaseBox2050){releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Stale executable prevention · v2.0.50</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the launcher reusing an existing binary even after source updates. Normal startup now rebuilds the application when source or build metadata is newer, so the displayed version and running fixes match the current project. Existing cached-data recovery and Stock API security controls remain in place.</p>');releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Reliable refresh and token guidance · v2.0.51</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Expired dashboard sessions now return to login instead of leaving the UI stuck on an HTML response. Fallback data is no longer mislabeled as an expired token, and the last displayed data remains available during failures. If Upstox reports an expired token, renew UPSTOX_ACCESS_TOKEN and restart the dashboard; Refresh cannot renew the server-side credential. Stock API access remains authenticated and credentials stay server-side.</p>')}</script>)JS";
+}
+
+const char* dashboardSessionRecovery() {
+    return R"JS(<script>(function(){const originalFetch=window.fetch;window.fetch=async function(){const response=await originalFetch.apply(this,arguments);if(response.redirected&&new URL(response.url,window.location.origin).pathname==='/login')window.location.replace('/login');return response}})()</script>)JS";
 }
 
 std::string dashboardVersion() {
     return std::string("<script>document.querySelector('.kicker').insertAdjacentHTML('beforeend',' <span style=\"font-size:10px;letter-spacing:1px;color:var(--muted)\">v") +
-           PORTFOLIO_HEALTH_VERSION + "</span>');</script>";
+           PORTFOLIO_HEALTH_VERSION + "</span>');</script>" + dashboardSessionRecovery();
 }
 
 const char* deeperAnalysisStyles() {
@@ -480,7 +484,7 @@ document.head.insertAdjacentHTML('beforeend','<style>.metric-stock-list{position
 function numberField(item,keys){for(const key of keys){const value=Number(item[key]);if(Number.isFinite(value))return value}return 0}
 function holdingValue(item){const reported=numberField(item,['current_value','market_value','value']);if(reported)return reported;return numberField(item,['last_price'])*numberField(item,['quantity'])*Math.max(1,numberField(item,['multiplier'])||1)}
 function stockCount(items){return new Set(items.map(item=>(item.trading_symbol||item.tradingsymbol||'').trim()).filter(Boolean)).size}
-function refreshView(){if(refreshInFlight)return;cache={};apiRetryAt={};apiRetryMessages={};manualRefreshRequested=true;refreshInFlight=true;const button=document.querySelector('#refresh-view');button.disabled=true;button.textContent='Refreshing...';status.textContent='Refreshing current view...';openTab(activeTab,false).finally(()=>{refreshInFlight=false;manualRefreshRequested=false;button.disabled=false;button.textContent='Refresh'})}
+function refreshView(){if(refreshInFlight)return;cache={};apiRetryAt={};apiRetryMessages={};manualRefreshRequested=true;refreshInFlight=true;const button=document.querySelector('#refresh-view'),inlineButtons=[...document.querySelectorAll('.metric-refresh')];button.disabled=true;button.textContent='Refreshing...';inlineButtons.forEach(item=>{item.disabled=true;item.textContent='Refreshing...'});status.textContent='Refreshing current view...';openTab(activeTab,false).finally(()=>{refreshInFlight=false;manualRefreshRequested=false;button.disabled=false;button.textContent='Refresh';inlineButtons.forEach(item=>{if(item.isConnected){item.disabled=false;item.textContent='Refresh now'}})})}
 const baseSafeJsonFetch=safeJsonFetch;safeJsonFetch=async function(url,fallback){if(!String(url).includes('/api/deeper-analysis'))return baseSafeJsonFetch(url,fallback);let result;for(let attempt=0;attempt<3;attempt++){result=await baseSafeJsonFetch(url,fallback);if(result.status!=='error'||attempt===2)return result;status.textContent='Deeper analysis reconnecting...';await new Promise(resolve=>setTimeout(resolve,750*(attempt+1)))}return result}
 let updatesPaused=false;
 function toggleUpdates(){updatesPaused=!updatesPaused;document.querySelector('#pause-refresh').textContent=updatesPaused?'Resume updates':'Pause updates';document.querySelector('#pause-refresh').setAttribute('aria-pressed',String(updatesPaused))}
@@ -1446,14 +1450,19 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
     constexpr auto cacheLifetime = std::chrono::seconds(30);
     constexpr auto manualRefreshLimit = std::chrono::seconds(10);
     const auto now = std::chrono::steady_clock::now();
-    const auto staleSnapshot = [](const std::shared_ptr<const Snapshot>& current) {
+    const auto staleSnapshot = [](const std::shared_ptr<const Snapshot>& current,
+                                  bool tokenExpired = false) {
         if (!current) return std::shared_ptr<const Snapshot>{};
         const auto now = std::chrono::steady_clock::now();
         auto stale = std::make_shared<Snapshot>(*current);
         json holdings = json::parse(stale->holdings);
         const auto source = holdings.value("source", std::string("unknown"));
+        tokenExpired = tokenExpired ||
+            isAccessTokenStale(holdings.value("warning", std::string{}));
         holdings["source"] = source == "upstox-live" ? "upstox-stale" : source + "-stale";
-        holdings["warning"] = "Live Upstox refresh failed; displaying the last successful portfolio snapshot.";
+        holdings["warning"] = tokenExpired
+            ? "Upstox access token expired or unauthorized; displaying the last successful portfolio snapshot. Renew UPSTOX_ACCESS_TOKEN and restart the dashboard."
+            : "Live Upstox refresh failed; displaying the last successful portfolio snapshot.";
         holdings["snapshot_age_seconds"] = std::chrono::duration_cast<std::chrono::seconds>(
             now - current->created).count();
         stale->holdings = holdings.dump();
@@ -1473,7 +1482,8 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
             return snapshot_;
         }
         if (!forceRefresh && now < snapshotRetryAfter_) {
-            if (snapshot_) return staleSnapshot(snapshot_);
+            if (snapshot_) return staleSnapshot(
+                snapshot_, isAccessTokenStale(snapshotRefreshError_));
             throw std::runtime_error(snapshotRefreshError_.empty()
                 ? "portfolio data refresh is temporarily delayed"
                 : snapshotRefreshError_);
@@ -1483,11 +1493,13 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
     std::unique_lock<std::mutex> refreshLock(refreshMutex_, std::try_to_lock);
     if (!refreshLock.owns_lock()) {
         std::shared_ptr<const Snapshot> current;
+        bool tokenExpired = false;
         {
             MutexGuard lock(snapshotMutex_);
             current = snapshot_;
+            tokenExpired = isAccessTokenStale(snapshotRefreshError_);
         }
-        if (current) return staleSnapshot(current);
+        if (current) return staleSnapshot(current, tokenExpired);
 
         const json fallback = localHoldings(holdingsFile_);
         if (!fallback.is_object() || !fallback.contains("data") ||
@@ -1512,14 +1524,16 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
             return snapshot_;
         }
         if (!forceRefresh && checkedAt < snapshotRetryAfter_) {
-            if (snapshot_) return staleSnapshot(snapshot_);
+            if (snapshot_) return staleSnapshot(
+                snapshot_, isAccessTokenStale(snapshotRefreshError_));
             throw std::runtime_error(snapshotRefreshError_.empty()
                 ? "portfolio data refresh is temporarily delayed"
                 : snapshotRefreshError_);
         }
         if (forceRefresh) {
             if (checkedAt < manualRefreshAfter_) {
-                if (snapshot_) return staleSnapshot(snapshot_);
+                if (snapshot_) return staleSnapshot(
+                    snapshot_, isAccessTokenStale(snapshotRefreshError_));
                 throw std::runtime_error("manual portfolio refresh is rate limited");
             }
             manualRefreshAfter_ = checkedAt + manualRefreshLimit;
@@ -1543,7 +1557,8 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
             MutexGuard lock(snapshotMutex_);
             current = snapshot_;
         }
-        if (current) return staleSnapshot(current);
+        if (current) return staleSnapshot(
+            current, isAccessTokenStale(holdings.error));
 
         const json fallback = localHoldings(holdingsFile_);
         if (!fallback.is_object() || !fallback.contains("data") ||

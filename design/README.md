@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.50`
+**Version:** `2.0.51`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -62,8 +62,8 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
-
-- **[Release Notes v2.0.50](RELEASE_NOTES_V2.0.50.md)** — current: launcher rebuilds stale application binaries
+- **[Release Notes v2.0.51](RELEASE_NOTES_V2.0.51.md)** — token-aware refresh status and dashboard stability
+- **[Release Notes v2.0.50](RELEASE_NOTES_V2.0.50.md)** — launcher rebuilds stale application binaries
 - **[Release Notes v2.0.49](RELEASE_NOTES_V2.0.49.md)** — concurrent request handling for long-running dashboard stability
 - **[Release Notes v2.0.48](RELEASE_NOTES_V2.0.48.md)** — resilient long-running data availability
 - **[Release Notes v2.0.47](RELEASE_NOTES_V2.0.47.md)** — query-based API routing and responsive Fundamentals popup
@@ -124,6 +124,7 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.51` — Redirect expired browser sessions to login instead of leaving the dashboard stuck on a parsed login response; distinguish expired Upstox tokens from ordinary offline fallback, reuse the retained snapshot's token warning after refresh failures, improve refresh-control styling, and document token restart requirements.
 - `2.0.50` — Make `run.sh` rebuild incrementally when sources or build metadata postdate the executable, fixing an old binary being launched after source changes; preserve explicit clean rebuild behavior and add launcher regression tests.
 - `2.0.49` — Process browser connections concurrently with a fixed maximum of eight workers; return cached/stale or local bootstrap data when another request already owns the snapshot refresh lock; keep the last rendered page visible with a warning after transient refresh failures; retain existing authentication and upstream retry controls.
 - `2.0.48` — Preserved the last successful live snapshot ahead of the static CSV fallback during Upstox failures; resolved holdings and saved-news paths from the project root so fallback works independently of launch directory; added explicit expired-token guidance and regression coverage.
