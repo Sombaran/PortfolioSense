@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.51
+Version: 2.0.52
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -15,6 +15,7 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
 - **[v2.0.51 release notes](design/RELEASE_NOTES_V2.0.51.md)** — refresh recovery and token guidance
+- **[v2.0.52 release notes](design/RELEASE_NOTES_V2.0.52.md)** — sliding session renewal for long-running dashboard tabs
 - Security-first handling around API tokens and external HTTP endpoints
 - Local monolith architecture with internal async task scheduling for background work
 - Safe extension path for future distributed workers only when real operational need exists
@@ -29,9 +30,18 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.51
+Current release: 2.0.52
 
-Last updated: October 12, 2026
+Last updated: October 13, 2026
+
+Version 2.0.52 fixes the one-hour dashboard interruption: the login cookie
+expired exactly 60 minutes after login even while the user was actively
+refreshing live pages. Successful authenticated requests now slide the
+one-hour idle timeout and renew the HttpOnly cookie. A visible dashboard also
+renews its session every ten minutes through a lightweight local endpoint that
+does not call Upstox. Hidden/inactive sessions still expire and are removed.
+This keeps long-running dashboard tabs authenticated without exposing
+credentials to browser JavaScript. The login popup summarizes the fix.
 
 Version 2.0.51 distinguishes an expired Upstox access token from an ordinary
 offline/local fallback, so users are not told to renew credentials for a

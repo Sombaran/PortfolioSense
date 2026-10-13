@@ -410,8 +410,38 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.51" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.51"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.51"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.51" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.51`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.52" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.52"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.52"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.52" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.52`" in (root / "design" / "README.md").read_text()
+
+
+def test_authenticated_requests_renew_the_sliding_session_cookie():
+    root = Path(__file__).parents[2]
+    source = (root / "src" / "WebServer.cpp").read_text()
+    header = (root / "include" / "WebServer.hpp").read_text()
+    authentication = source.split("bool WebServer::authenticated(", 1)[1].split(
+        "\nstd::string WebServer::newSession()", 1
+    )[0]
+    new_session = source.split("std::string WebServer::newSession()", 1)[1].split(
+        "\nvoid WebServer::removeSession", 1
+    )[0]
+    response = source.split("std::string response(const std::string& body,", 1)[1].split(
+        "\nstd::string responseWithStatus", 1
+    )[0]
+
+    assert "std::unordered_map<std::string, std::chrono::steady_clock::time_point> sessions_" in header
+    assert "if (found->second <= now)" in authentication
+    assert "found->second = now + std::chrono::hours(1)" in authentication
+    assert "sessions_[session] = now + std::chrono::hours(1)" in new_session
+    assert "it = sessions_.erase(it)" in new_session
+    assert "Max-Age=3600; HttpOnly; SameSite=Strict; Path=/" in source
+    assert "extraHeaders" in response
+    assert 'response(body, "application/json", sessionCookie)' in source
+    assert 'path == "/api/session"' in source
+    assert "json({{\"status\", \"ready\"}})" in source
+    assert "setInterval(()=>{if(document.visibilityState==='visible')fetch('/api/session',{cache:'no-store'})" in source
+    assert "10*60*1000" in source
+    assert "releaseNoticeV2052Addendum()" in source
+    assert "Long-running session stability · v2.0.52" in source

@@ -413,6 +413,10 @@ const char* releaseNoticeV2050Addendum() {
     return R"JS(<script>const releaseBox2050=document.querySelector('[role="dialog"]');if(releaseBox2050){releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Stale executable prevention · v2.0.50</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the launcher reusing an existing binary even after source updates. Normal startup now rebuilds the application when source or build metadata is newer, so the displayed version and running fixes match the current project. Existing cached-data recovery and Stock API security controls remain in place.</p>');releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Reliable refresh and token guidance · v2.0.51</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Expired dashboard sessions now return to login instead of leaving the UI stuck on an HTML response. Fallback data is no longer mislabeled as an expired token, and the last displayed data remains available during failures. If Upstox reports an expired token, renew UPSTOX_ACCESS_TOKEN and restart the dashboard; Refresh cannot renew the server-side credential. Stock API access remains authenticated and credentials stay server-side.</p>')}</script>)JS";
 }
 
+const char* releaseNoticeV2052Addendum() {
+    return R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS";
+}
+
 const char* dashboardSessionRecovery() {
     return R"JS(<script>(function(){const originalFetch=window.fetch;window.fetch=async function(){const response=await originalFetch.apply(this,arguments);if(response.redirected&&new URL(response.url,window.location.origin).pathname==='/login')window.location.replace('/login');return response}})()</script>)JS";
 }
@@ -532,6 +536,7 @@ function recoverAfterWake(){const now=Date.now();if(now-lastVisibleAt<5000)retur
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')recoverAfterWake()});
 window.addEventListener('pageshow',recoverAfterWake);
 setInterval(()=>{if(document.visibilityState==='visible'&&activeTab==='deeper-analysis'&&!updatesPaused){cache={};openTab(activeTab,false)}},30000);
+setInterval(()=>{if(document.visibilityState==='visible')fetch('/api/session',{cache:'no-store'}).catch(error=>console.warn('Session renewal failed',error))},10*60*1000);
 setInterval(loadMarketHolidays,12*60*60*1000);refreshTimer=setInterval(()=>{updateMarketStatus();if(document.visibilityState==='visible'&&!updatesPaused&&!refreshInFlight&&activeTab!=='config'&&activeTab!=='deeper-analysis'&&!(activeTab==='operations'&&['config','download'].includes(window.activeOperationsSection))){cache={};refreshInFlight=true;openTab(activeTab,false).finally(()=>refreshInFlight=false)}},15000);
 </script></body></html>)HTML";
 }
@@ -873,11 +878,13 @@ std::string ensureValidJson(const std::string& body,
     }
 }
 
-std::string response(const std::string& body, const std::string& type = "application/json") {
+std::string response(const std::string& body,
+                     const std::string& type = "application/json",
+                     const std::string& extraHeaders = {}) {
     const std::string safeBody = type == "application/json" ? ensureValidJson(body) : body;
     return "HTTP/1.1 200 OK\r\nContent-Type: " + type +
            "; charset=utf-8\r\nCache-Control: no-store, no-cache, must-revalidate\r\nPragma: no-cache\r\nContent-Length: " + std::to_string(safeBody.size()) +
-           "\r\nConnection: close\r\n\r\n" + safeBody;
+           "\r\nConnection: close\r\n" + extraHeaders + "\r\n" + safeBody;
 }
 
 std::string responseWithStatus(const std::string& status,
@@ -1408,7 +1415,15 @@ bool WebServer::authenticated(const std::string& request) const {
     const std::string session = cookieValue(request);
     if (session.empty()) return false;
     std::lock_guard<std::mutex> lock(sessionMutex_);
-    return sessions_.count(session) != 0;
+    const auto found = sessions_.find(session);
+    if (found == sessions_.end()) return false;
+    const auto now = std::chrono::steady_clock::now();
+    if (found->second <= now) {
+        sessions_.erase(found);
+        return false;
+    }
+    found->second = now + std::chrono::hours(1);
+    return true;
 }
 
 std::string WebServer::newSession() {
@@ -1418,7 +1433,12 @@ std::string WebServer::newSession() {
     const std::string session = std::to_string(distribution(generator)) +
                                 std::to_string(distribution(generator));
     std::lock_guard<std::mutex> lock(sessionMutex_);
-    sessions_.insert(session);
+    const auto now = std::chrono::steady_clock::now();
+    for (auto it = sessions_.begin(); it != sessions_.end();) {
+        if (it->second <= now) it = sessions_.erase(it);
+        else ++it;
+    }
+    sessions_[session] = now + std::chrono::hours(1);
     return session;
 }
 
@@ -1751,10 +1771,15 @@ int WebServer::run() {
             else if (path == "/") {
                 std::string html = page();
                 const std::string marker = "</body>";
-                html.replace(html.find(marker), marker.size(), std::string(dashboardVersion()) + releaseNoticeV2030() + releaseNoticeV2031Addendum() + releaseNoticeV2032Addendum() + releaseNoticeV2033Addendum() + releaseNoticeV2034Addendum() + releaseNoticeV2035Addendum() + releaseNoticeV2036Addendum() + releaseNoticeV2037Addendum() + releaseNoticeV2038Addendum() + releaseNoticeV2039Addendum() + releaseNoticeV2040Addendum() + releaseNoticeV2041Addendum() + releaseNoticeV2042Addendum() + releaseNoticeV2043Addendum() + releaseNoticeV2044Addendum() + releaseNoticeV2045Addendum() + releaseNoticeV2046Addendum() + releaseNoticeV2047Addendum() + releaseNoticeV2048Addendum() + releaseNoticeV2049Addendum() + releaseNoticeV2050Addendum() + sortingReleaseNotice() + requestedDashboardTabs() + requestedDashboardRouting() + operationsWorkspace() + operationsDownload() + requestedDashboardReleaseNotice() + responsiveDashboardNavigation() + deeperAnalysisStyles() + deeperAnalysisPlacement() + dashboardSecurityHardening() + dashboardUiOptimization() + dashboardResponsiveLayout() + consolidatedMarketNewsTab() + dashboardPageOptimization() + marker);
-                const std::string head = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: " + std::to_string(html.size()) + "\r\nConnection: close\r\n\r\n";
+                html.replace(html.find(marker), marker.size(), std::string(dashboardVersion()) + releaseNoticeV2030() + releaseNoticeV2031Addendum() + releaseNoticeV2032Addendum() + releaseNoticeV2033Addendum() + releaseNoticeV2034Addendum() + releaseNoticeV2035Addendum() + releaseNoticeV2036Addendum() + releaseNoticeV2037Addendum() + releaseNoticeV2038Addendum() + releaseNoticeV2039Addendum() + releaseNoticeV2040Addendum() + releaseNoticeV2041Addendum() + releaseNoticeV2042Addendum() + releaseNoticeV2043Addendum() + releaseNoticeV2044Addendum() + releaseNoticeV2045Addendum() + releaseNoticeV2046Addendum() + releaseNoticeV2047Addendum() + releaseNoticeV2048Addendum() + releaseNoticeV2049Addendum() + releaseNoticeV2050Addendum() + releaseNoticeV2052Addendum() + sortingReleaseNotice() + requestedDashboardTabs() + requestedDashboardRouting() + operationsWorkspace() + operationsDownload() + requestedDashboardReleaseNotice() + responsiveDashboardNavigation() + deeperAnalysisStyles() + deeperAnalysisPlacement() + dashboardSecurityHardening() + dashboardUiOptimization() + dashboardResponsiveLayout() + consolidatedMarketNewsTab() + dashboardPageOptimization() + marker);
+                const std::string sessionCookie = "Set-Cookie: session=" +
+                    cookieValue(requestText) +
+                    "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
+                const std::string head = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: " + std::to_string(html.size()) + "\r\nConnection: close\r\n" + sessionCookie + "\r\n";
                 sendAll(connection, head + html);
                 close(connection); continue;
+            } else if (path == "/api/session") {
+                body = json({{"status", "ready"}}).dump();
             } else if (path == "/api/market-holidays") {
                 body = marketHolidays();
             } else if (path.rfind("/api/market-quotes?instrument_key=", 0) == 0) {
@@ -1911,7 +1936,11 @@ int WebServer::run() {
                     else if (path == "/api/news") body = ensureValidJson(current->news, json({{"status", "error"}, {"data", json::object()}, {"alerts", json::array()}, {"source", "unavailable"}}).dump());
                     else body = current->metrics;
                     if (path == "/metrics") {
-                        const std::string output = response(body, "text/plain; version=0.0.4");
+                        const std::string sessionCookie = "Set-Cookie: session=" +
+                            cookieValue(requestText) +
+                            "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
+                        const std::string output = response(
+                            body, "text/plain; version=0.0.4", sessionCookie);
                         sendAll(connection, output);
                         close(connection); continue;
                     }
@@ -1932,7 +1961,10 @@ int WebServer::run() {
         } catch (const std::exception& e) {
             body = json({{"error", "Request failed"}, {"details", e.what()}}).dump();
         }
-        const std::string output = response(body);
+        const std::string sessionCookie = "Set-Cookie: session=" +
+            cookieValue(requestText) +
+            "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
+        const std::string output = response(body, "application/json", sessionCookie);
         sendAll(connection, output);
         close(connection);
                 } while (false);

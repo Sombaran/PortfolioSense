@@ -5,8 +5,8 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -61,7 +61,7 @@ private:
     mutable std::string marketHolidaysCache_;
     mutable std::chrono::steady_clock::time_point marketHolidaysExpires_{};
     mutable std::mutex sessionMutex_;
-    std::unordered_set<std::string> sessions_;
+    mutable std::unordered_map<std::string, std::chrono::steady_clock::time_point> sessions_;
     mutable std::mutex analysisMutex_;
     mutable bool analysisRunning_ = false;
     mutable std::string analysisResult_;
