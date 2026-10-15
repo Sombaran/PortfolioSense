@@ -1,12 +1,12 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.52`
+**Version:** `2.0.56`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
 ### Key Features (v2.0.0+)
 
-- **Stream holdings + live quotes** via WebSocket API
+- **Stream live holdings quotes** through the server-side Upstox V3 WebSocket
 - **Process data in C++/Python** with technical indicators (RSI, MACD, Bollinger Bands) and ML models
 - **Generate insights** with signals, risk scores, and sentiment overlays
 - **Push to UI** with Angular dashboard and mobile notifications
@@ -62,6 +62,13 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.56](RELEASE_NOTES_V2.0.56.md)** — root cause and fix for builds using libcurl without WSS
+- **[Implementation Summary v2.0.56](IMPLEMENTATION_SUMMARY_V2.0.56.md)** — WebSocket-enabled dependency and capability guard
+- **[Release Notes v2.0.55](RELEASE_NOTES_V2.0.55.md)** — reliable WebSocket sends, live quote matching, and reconnect diagnostics
+- **[Implementation Summary v2.0.55](IMPLEMENTATION_SUMMARY_V2.0.55.md)** — streaming reliability, dashboard updates, and validation
+- **[Release Notes v2.0.54](RELEASE_NOTES_V2.0.54.md)** — server-side Upstox V3 WebSocket and live Overview quotes
+- **[Implementation Summary v2.0.54](IMPLEMENTATION_SUMMARY_V2.0.54.md)** — architecture, security boundary, and validation summary
+- **[Release Notes v2.0.53](RELEASE_NOTES_V2.0.53.md)** — JSON view grouped under Operations and responsive dashboard optimization
 - **[Release Notes v2.0.52](RELEASE_NOTES_V2.0.52.md)** — sliding session renewal for long-running dashboard tabs
 - **[Release Notes v2.0.51](RELEASE_NOTES_V2.0.51.md)** — token-aware refresh status and dashboard stability
 - **[Release Notes v2.0.50](RELEASE_NOTES_V2.0.50.md)** — launcher rebuilds stale application binaries
@@ -112,7 +119,7 @@ put it in browser JavaScript.
 - **[Portfolio Health Model](PortfolioHealthModel.md)** — scoring algorithm and health metric calculations
 - **[Build Fixes v2.0.0](BUILD_FIXES_V2.0.0.md)** — initial 2.0 build system and dependency resolution
 
-The browser UI provides Overview, Market news, Alerts, Deeper analysis, Fundamentals, Operations, JSON, and Summary Dashboard tabs. Operations contains Positions, Data health, and Configuration subviews. Holdings and news refresh while live-data views are active; Configuration is read-only and does not trigger polling. Market news is filtered to normalized symbols in `config/holding.csv`; Alerts lists every holding, adds a serial number, links available `Why` explanations to Market news, and provides advisory sentiment without placing orders.
+The browser UI provides Overview, Market news, Alerts, Deeper analysis, Fundamentals, Operations, and Summary Dashboard tabs. Operations contains Positions, Data health, Configuration, JSON, and Download subviews. JSON is a read-only view of the authenticated holdings payload. Holdings and news refresh while live-data views are active; Configuration and Download do not trigger polling. Market news is filtered to normalized symbols in `config/holding.csv`; Alerts lists every holding, adds a serial number, links available `Why` explanations to Market news, and provides advisory sentiment without placing orders.
 
 ### Architecture guidance
 
@@ -125,6 +132,10 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.56` — Fix the root cause of `Unsupported protocol`: the distro libcurl did not advertise WSS support. Pin a Conan libcurl release with `with_websockets=True`, make that dependency the standard build, and fail clearly at startup if a direct/non-Conan build lacks WSS; retain the existing trusted-host and TLS checks and document the correction in the login popup.
+- `2.0.55` — Resume partial/non-blocking WebSocket writes and ping responses until complete with a bounded timeout; return a short authenticated feed diagnostic to the Overview; correlate each quote by instrument key and refresh row-level live Last/P&L values; retain TLS and URL validation and document the post-login fix popup.
+- `2.0.54` — Implement Upstox Market Data Feed V3 over a verified server-side WebSocket, constrain subscriptions to 100 validated instrument keys, decode bounded Protobuf frames, expose only cached quotes through an authenticated same-origin endpoint, update the visible Overview without disclosing the authorized URL or token, and document the release in the post-login popup.
+- `2.0.53` — Move the escaped, read-only holdings JSON view into the existing Operations workspace, keeping its authenticated endpoint and Stock API security boundary; preserve responsive layout and rendering optimizations across dashboard pages; add a post-login release popup summary and regression coverage.
 - `2.0.52` — Fix the one-hour dashboard interruption by sliding the existing one-hour idle expiry, renewing the HttpOnly cookie on authenticated traffic, and refreshing visible low-traffic tabs through a local endpoint with no Stock API calls; expire inactive sessions and clean them up on login.
 - `2.0.51` — Redirect expired browser sessions to login instead of leaving the dashboard stuck on a parsed login response; distinguish expired Upstox tokens from ordinary offline fallback, reuse the retained snapshot's token warning after refresh failures, improve refresh-control styling, and document token restart requirements.
 - `2.0.50` — Make `run.sh` rebuild incrementally when sources or build metadata postdate the executable, fixing an old binary being launched after source changes; preserve explicit clean rebuild behavior and add launcher regression tests.
@@ -191,24 +202,21 @@ The authenticated web API also exposes Upstox market quotes:
 including OHLC, depth, volume, and circuit limits. `/api/market-quote/ohlc`
 uses the v3 OHLC endpoint and requires `interval=1d`, `I1`, or `I30`. Both
 routes accept comma-separated instrument keys and support up to 500 symbols.
-The authenticated web API also exposes Upstox market quotes:
-`/api/market-quotes?instrument_key=...` returns the full v2 quote snapshot,
-including OHLC, depth, volume, and circuit limits. `/api/market-quote/ohlc`
-uses the v3 OHLC endpoint and requires `interval=1d`, `I1`, or `I30`. Both
-routes accept comma-separated instrument keys and support up to 500 symbols.
 
-### Real-Time Streaming (v2.0.0+)
+### Real-Time Streaming (v2.0.54+)
 
-`/api/market-feed/authorize` obtains the one-time authorized `wss://` URL for
-the Upstox Market Data Feed V3. The feed itself uses binary Protobuf frames;
-use a WebSocket client with the official `MarketDataFeed.proto` schema to
-subscribe and decode live updates.
+For live Upstox holdings, the server obtains the Market Data Feed V3
+authorization URL and connects to the trusted `wss://` host using TLS
+verification. It subscribes to up to 100 validated instrument keys with binary
+Protobuf frames, handles reconnects, and maintains a bounded-by-subscription
+quote cache. The feed is decoded server-side; neither the access token nor the
+authorized WebSocket URL is sent to the browser.
 
-`/api/stream/holdings` streams real-time holdings updates via WebSocket, allowing
-live monitoring of portfolio changes without polling.
-
-`/api/stream/quotes` establishes a WebSocket connection for streaming live market
-quotes for subscribed symbols.
+`GET /api/stream/quotes` is an authenticated, same-origin JSON snapshot of that
+cache and connection state, not a WebSocket endpoint. The visible Overview
+polls this local route every two seconds while updates are enabled and the tab
+is active. `/api/market-feed/authorize` retains its authenticated route for
+status-only authorization checks and does not return the authorized URL.
 
 ### Technical Indicators & Analysis (v2.0.0+)
 
@@ -326,25 +334,20 @@ cmake --build build --target run-json   # your config/my_portfolio.json
 cmake --build build --target run-live   # live account (needs token)
 ```
 
-`nlohmann/json` is vendored in `third_party/`, so the build works offline.
+The standard project build uses Conan's pinned libcurl package with WebSocket
+support enabled. The distribution libcurl may provide HTTP/HTTPS but omit the
+WSS protocol, which prevents the live market feed from connecting.
 
 ## Build with Conan 2
 
-Conan generates the CMake toolchain and dependency files. By default, the
-recipe uses the system `libcurl`, which avoids rebuilding libcurl on older
-Linux hosts:
+Conan generates the CMake toolchain and dependency files. It builds the
+project's pinned libcurl with `with_websockets=True` so the runtime supports
+the `wss://` feed URL:
 
 ```bash
 conan install . --output-folder=build/conan --build=missing
 cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=build/conan/build/Release/generators/conan_toolchain.cmake
 cmake --build build
-```
-
-On a host that can build Conan's libcurl package, enable it explicitly:
-
-```bash
-conan install . --output-folder=build/conan --build=missing \
-  -o use_conan_libcurl=True
 ```
 
 ### Prerequisites
@@ -353,7 +356,12 @@ conan install . --output-folder=build/conan --build=missing \
 | ------------ | ---------------------------------- | --------------------------- |
 | CMake ≥ 3.16 | `apt install cmake`                | `dnf install cmake`         |
 | C++ compiler | `apt install build-essential`      | `dnf install gcc-c++`       |
-| libcurl -dev | `apt install libcurl4-openssl-dev` | `dnf install libcurl-devel` |
+| Conan 2 | `pipx install conan` | `pipx install conan` |
+
+The CMake/Conan build supplies its own pinned libcurl with WSS enabled; a
+system `libcurl-dev` package is not used by that build. The legacy Bazel build
+still links the host libcurl, so use CMake/Conan when live market streaming is
+required.
 
 ---
 

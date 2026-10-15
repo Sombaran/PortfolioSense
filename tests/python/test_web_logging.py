@@ -155,9 +155,27 @@ def test_operations_workspace_keeps_existing_subviews():
     assert 'data-operation="positions"' in operations
     assert 'data-operation="health"' in operations
     assert 'data-operation="config"' in operations
+    assert 'data-operation="json"' in operations
     assert "raw('positions','/api/positions','Open positions')" in operations
     assert "await health()" in operations
     assert "await config()" in operations
+
+
+def test_operations_json_view_reuses_authenticated_holdings_payload():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    operations = source.split("const char* operationsWorkspace()", 1)[1].split(
+        "const char* operationsDownload()", 1
+    )[0]
+    page = source.split("const char* page()", 1)[1].split(
+        "std::unordered_set<std::string> csvSymbols", 1
+    )[0]
+
+    assert "nav.querySelector('[data-tab=\"json\"]')?.remove()" in operations
+    assert "else if(next==='json')await raw('holdings','/api/holdings','Holdings JSON')" in operations
+    assert "JSON.stringify(p,null,2)" in page
+    assert "'+esc(text)+'" in page
+    assert "grid-template-columns:repeat(3,minmax(0,1fr))" in operations
+    assert "data-tab=\"json\"" in page
 
 
 def test_operations_download_uses_authenticated_holdings_and_safe_csv():
@@ -410,11 +428,48 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.52" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.52"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.52"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.52" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.52`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.56" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.56"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.56"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.56" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.56`" in (root / "design" / "README.md").read_text()
+    release = (root / "design" / "RELEASE_NOTES_V2.0.56.md").read_text()
+    assert "Unsupported protocol" in release
+    assert "login popup" in release
+    conan_recipe = (root / "conanfile.py").read_text()
+    assert 'self.requires("libcurl/8.22.0")' in conan_recipe
+    assert '"libcurl/*:with_websockets": True' in conan_recipe
+
+
+def test_stream_quotes_are_local_and_authorized_feed_url_is_not_returned():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    authorization = source.split('path == "/api/market-feed/authorize"', 1)[1].split(
+        'path == "/api/stream/quotes"', 1
+    )[0]
+    quotes_ui = source.split("const char* dashboardLiveFeedUi()", 1)[1].split(
+        "std::string dashboardVersion()", 1
+    )[0]
+
+    assert '"authorizedRedirectUri"' not in authorization
+    assert '{"status", "success"}' in authorization
+    assert 'fetch(\'/api/stream/quotes\'' in quotes_ui
+    assert 'row.cells[row.cells.length-2]' in quotes_ui
+    assert """view.querySelector('[data-instrument-key="'+CSS.escape(key)+'"]')""" in quotes_ui
+    assert "Live market feed reconnecting" in quotes_ui
+    assert '{"error", std::move(lastError)}' in source
+    assert "if (lastError.size() > 180)" in source
+    assert "data-instrument-key=\"'+esc(key)+'\">" in source
+    assert "pnlCell.textContent" in quotes_ui
+    streaming = (Path(__file__).parents[2] / "src" / "StreamingClient.cpp").read_text()
+    sender = streaming.split("bool sendFrame(", 1)[1].split(
+        "bool sendBinary(", 1
+    )[0]
+    assert "result == CURLE_AGAIN" in sender
+    assert "descriptor.events = POLLOUT" in sender
+    assert "WebSocket send timed out" in sender
+    assert "supportsWebSocketProtocol()" in streaming
+    assert 'installed libcurl lacks WSS support' in streaming
+    assert "releaseNoticeV2056Addendum()" in source
 
 
 def test_authenticated_requests_renew_the_sliding_session_cookie():
@@ -445,3 +500,9 @@ def test_authenticated_requests_renew_the_sliding_session_cookie():
     assert "10*60*1000" in source
     assert "releaseNoticeV2052Addendum()" in source
     assert "Long-running session stability · v2.0.52" in source
+
+
+def test_raw_view_truncates_large_payload():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    # The raw JSON view now truncates large payloads in-browser and offers a download
+    assert 'Download full payload' in source

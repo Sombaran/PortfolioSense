@@ -1,7 +1,9 @@
 #pragma once
 
 #include "UpstoxClient.hpp"
+#include "StreamingClient.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -44,6 +46,7 @@ private:
     std::string runDeeperAnalysis() const;
     std::string stockAnalysis(const std::string& symbol) const;
     std::string fundamentalsAnalysis(const std::string& symbol) const;
+    void startMarketFeed(const std::string& holdingsPayload);
     bool authenticated(const std::string& request) const;
     std::string newSession();
     void removeSession(const std::string& request);
@@ -51,6 +54,7 @@ private:
     const UpstoxClient& client_;
     std::string holdingsFile_;
     int port_;
+    StreamingClient marketFeed_;
     mutable std::mutex snapshotMutex_;
     mutable std::mutex refreshMutex_;
     mutable std::shared_ptr<const Snapshot> snapshot_;

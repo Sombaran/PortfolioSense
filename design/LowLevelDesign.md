@@ -6,7 +6,7 @@
 | ----------------------------------- | ----------------------------------- | ---------------------------------------------- |
 | `include/HttpClient.hpp`            | `src/HttpClient.cpp`                | Thread-safe libcurl wrapper.                   |
 | `include/UpstoxClient.hpp`          | `src/UpstoxClient.cpp`              | Upstox REST client: positions, holdings, news, and LTP. |
-| `include/StreamingClient.hpp`       | `src/StreamingClient.cpp`           | WebSocket streaming for live quotes & holdings (v2.0.0+). |
+| `include/StreamingClient.hpp`       | `src/StreamingClient.cpp`           | Server-side Upstox V3 WebSocket transport and live quote cache (v2.0.54+). |
 | `include/Position.hpp`              | (header-only)                       | Domain struct mirroring the API payload.       |
 | `include/PortfolioLoader.hpp`       | `src/PortfolioLoader.cpp`           | CSV / JSON reader for user-supplied portfolios.|
 | `include/TechnicalIndicators.hpp`   | `src/TechnicalIndicators.cpp`       | Indicators: RSI, MACD, Bollinger Bands, Stochastic, ATR (v2.0.0+). |
@@ -28,11 +28,18 @@ company name as the holding identity fields.
 
 ### v2.0.0 Module Enhancements
 
-**StreamingClient** manages WebSocket connections to Upstox Market Data Feed V3.
-It uses the authorization URL from `UpstoxClient::getMarketFeedAuth()` and decodes
-binary Protobuf frames using the official schema. Streaming state is maintained
-per symbol, with automatic reconnection on network failure. Thread-safe quote
-cache serves the latest price for each subscribed symbol.
+**StreamingClient** obtains the authorized WebSocket URL through
+`UpstoxClient::authorizeMarketDataFeed()`, validates its trusted Upstox host,
+and connects with libcurl TLS peer and hostname verification enabled. It sends
+the documented binary subscription frame and decodes bounded Protobuf feed
+messages into a mutex-protected cache. It reconnects after transient failures
+and caps each connection at 100 unique instrument keys. The web server exposes
+only cached quote snapshots through authenticated `/api/stream/quotes`; it
+never returns the token or authorized URL to browser code.
+Non-blocking subscription and heartbeat writes are resumed until the complete
+frame is sent or a bounded timeout occurs. The quote endpoint includes the
+last connection diagnostic (truncated) so the Overview can distinguish a
+connection failure from an empty market update.
 
 **TechnicalIndicators** calculates:
 - **RSI** — Wilder's Relative Strength Index; overbought >70, oversold <30
@@ -162,7 +169,9 @@ articles, preventing raw saved news from entering `/api/news`.
 HTTP responses use `no-store`/`no-cache`; holdings payloads identify their
 source as `upstox-live` or `local-fallback`.
 news refreshes fall back to filtered `config/portfolio_news.json`, while true
-tick-level updates require the Upstox WebSocket and Protobuf subscription path.
+tick-level updates use the server-side Upstox WebSocket and Protobuf
+subscription path; `/api/stream/quotes` is a local JSON cache endpoint rather
+than a browser-facing WebSocket.
 The API key, API secret, and access token are supplied through environment
 variables or an external secret manager; the access token is read from
 `UPSTOX_ACCESS_TOKEN` and never stored by repository scripts. The HTTP client
@@ -364,7 +373,8 @@ one instance across worker threads.
 
 * C++17, warnings as errors under `-Wall -Wextra -Wpedantic` (Clang/GCC)
   or `/W4 /permissive-` (MSVC).
-* `find_package(CURL REQUIRED)` — libcurl comes from the system.
+* `find_package(CURL REQUIRED)` — the standard CMake build resolves the
+  pinned Conan libcurl package, built with WebSocket support enabled.
 * JSON is resolved in this order: vendored →
   `find_package(nlohmann_json)` → `FetchContent` (opt-in with
   `-DPORTFOLIO_HEALTH_FETCH_JSON=ON`).

@@ -205,6 +205,7 @@ const char* operationsWorkspace() {
     if(!operationsButton)return;
     operationsButton.dataset.tab='operations';
     operationsButton.textContent='Operations';
+    nav.querySelector('[data-tab="json"]')?.remove();
     healthButton?.remove();
     configButton?.remove();
     let section='positions';
@@ -213,6 +214,7 @@ const char* operationsWorkspace() {
         '<button type="button" class="operations-tab" role="tab" data-operation="positions">Positions</button>'+ 
         '<button type="button" class="operations-tab" role="tab" data-operation="health">Data health</button>'+ 
         '<button type="button" class="operations-tab" role="tab" data-operation="config">Configuration</button>'+ 
+        '<button type="button" class="operations-tab" role="tab" data-operation="json">JSON</button>'+
         '<button type="button" class="operations-tab" role="tab" data-operation="download">Download</button></nav>';
     const renderSection=async next=>{
         section=next;
@@ -220,6 +222,7 @@ const char* operationsWorkspace() {
         try{
             if(next==='positions')await raw('positions','/api/positions','Open positions');
             else if(next==='health')await health();
+            else if(next==='json')await raw('holdings','/api/holdings','Holdings JSON');
             else if(next==='download')view.innerHTML='<section class="panel"><div class="label">Som Baran Portfolio</div><h2>Download stock list</h2><p>Export the holdings available to this authenticated dashboard as a CSV file.</p><button type="button" class="command-button" data-download-portfolio>Download CSV</button><p class="download-status" role="status" aria-live="polite">Uses the current live portfolio or local fallback.</p></section>';
             else await config();
         }catch(error){fail(error)}
@@ -243,7 +246,7 @@ const char* operationsWorkspace() {
         view.querySelector('[data-download-portfolio]')?.addEventListener('click',window.downloadPortfolioCsv);
         enhanceSortableTables();
     };
-    document.head.insertAdjacentHTML('beforeend','<style>.operations-tabs{display:flex;gap:6px;margin:0 0 14px;padding:6px;background:#e8efeb;border-bottom:1px solid var(--line)}.operations-tab{border:0;border-bottom:2px solid transparent;padding:9px 14px;background:transparent;color:var(--ink);font:700 12px Arial,sans-serif;cursor:pointer}.operations-tab:hover,.operations-tab.active{color:var(--teal)}.operations-tab.active{border-bottom-color:var(--teal)}.operations-tab:focus-visible{outline:2px solid var(--orange);outline-offset:2px}@media(max-width:560px){.operations-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.operations-tab{padding:9px 6px;font-size:11px}}</style>');
+    document.head.insertAdjacentHTML('beforeend','<style>.operations-tabs{display:flex;gap:6px;margin:0 0 14px;padding:6px;background:#e8efeb;border-bottom:1px solid var(--line)}.operations-tab{border:0;border-bottom:2px solid transparent;padding:9px 14px;background:transparent;color:var(--ink);font:700 12px Arial,sans-serif;cursor:pointer}.operations-tab:hover,.operations-tab.active{color:var(--teal)}.operations-tab.active{border-bottom-color:var(--teal)}.operations-tab:focus-visible{outline:2px solid var(--orange);outline-offset:2px}@media(max-width:560px){.operations-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.operations-tab{padding:9px 6px;font-size:11px}}</style>');
     const previousOpenTab=openTab;
     openTab=async function(tab,showLoading=true){
         if(tab!=='operations')return previousOpenTab(tab,showLoading);
@@ -413,17 +416,151 @@ const char* releaseNoticeV2050Addendum() {
     return R"JS(<script>const releaseBox2050=document.querySelector('[role="dialog"]');if(releaseBox2050){releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Stale executable prevention · v2.0.50</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the launcher reusing an existing binary even after source updates. Normal startup now rebuilds the application when source or build metadata is newer, so the displayed version and running fixes match the current project. Existing cached-data recovery and Stock API security controls remain in place.</p>');releaseBox2050.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Reliable refresh and token guidance · v2.0.51</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Expired dashboard sessions now return to login instead of leaving the UI stuck on an HTML response. Fallback data is no longer mislabeled as an expired token, and the last displayed data remains available during failures. If Upstox reports an expired token, renew UPSTOX_ACCESS_TOKEN and restart the dashboard; Refresh cannot renew the server-side credential. Stock API access remains authenticated and credentials stay server-side.</p>')}</script>)JS";
 }
 
-const char* releaseNoticeV2052Addendum() {
-    return R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS";
+const char* releaseNoticeV2053Addendum() {
+    return R"JS(<script>const releaseBox2053=document.querySelector('[role="dialog"]');if(releaseBox2053){releaseBox2053.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Simplified Operations and responsive dashboard · v2.0.53</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Moved the existing read-only holdings JSON view into Operations, alongside Positions, Data health, Configuration, and Download. Shared responsive layout and rendering optimizations continue across dashboard pages. The view uses the existing authenticated holdings endpoint; payload content is escaped and Stock API credentials remain server-side.</p>')}</script>)JS";
+}
+
+const char* releaseNoticeV2054Addendum() {
+    return R"JS(<script>const releaseBox2054=document.querySelector('[role="dialog"]');if(releaseBox2054){releaseBox2054.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Live Upstox market feed · v2.0.54</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Implemented the Upstox V3 WebSocket feed for live Overview prices. The server validates the trusted TLS endpoint, limits subscriptions, decodes feed messages, and returns cached quotes only through the authenticated local API. The broker token and authorized feed URL are never exposed to browser code. The post-login release popup summarizes this change; login and session behavior are unchanged.</p>')}</script>)JS";
+}
+
+const char* releaseNoticeV2055Addendum() {
+    return R"JS(<script>const releaseBox2055=document.querySelector('[role="dialog"]');if(releaseBox2055){releaseBox2055.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Live-feed reconnect reliability · v2.0.55</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed non-blocking WebSocket writes so subscription and heartbeat frames are retried safely instead of forcing reconnects. The Overview now identifies each live quote by instrument key, refreshes Last and P&amp;L, and shows a concise connection diagnostic when the feed cannot connect. Broker credentials and the authorized feed URL remain server-side.</p>')}</script>)JS";
+}
+
+const char* releaseNoticeV2056Addendum() {
+    return R"JS(<script>const releaseBox2056=document.querySelector('[role="dialog"]');if(releaseBox2056){releaseBox2056.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Upstox live-feed protocol support · v2.0.56</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the root cause of the reconnect error: the system libcurl was built without WSS support and returned “Unsupported protocol.” The standard build now uses a pinned Conan libcurl with WebSockets enabled, and the app checks this capability before connecting. Existing trusted-host and TLS verification remain enforced.</p>')}</script>)JS";
+}
+
+std::string releaseNoticeV2052Addendum() {
+    return std::string(R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS") + releaseNoticeV2053Addendum() + releaseNoticeV2054Addendum() + releaseNoticeV2055Addendum() + releaseNoticeV2056Addendum();
 }
 
 const char* dashboardSessionRecovery() {
     return R"JS(<script>(function(){const originalFetch=window.fetch;window.fetch=async function(){const response=await originalFetch.apply(this,arguments);if(response.redirected&&new URL(response.url,window.location.origin).pathname==='/login')window.location.replace('/login');return response}})()</script>)JS";
 }
 
+const char* dashboardLiveFeedUi() {
+    return R"JS(<script>
+(function(){
+    const view=document.querySelector('#view');
+    if(!view)return;
+    const style=document.createElement('style');
+    style.textContent='.live-feed-status{display:inline-flex;align-items:center;gap:7px;margin:0 0 12px;padding:7px 10px;border:1px solid var(--line);background:#eef4f1;color:var(--muted);font:12px Arial,sans-serif}.live-feed-status[data-state="connected"]{color:var(--green);border-color:#247a4b55}.live-feed-status[data-state="reconnecting"]{color:var(--orange)}.holding-live-price{font-variant-numeric:tabular-nums}';
+    document.head.appendChild(style);
+
+    async function refreshLiveQuotes(){
+        if(document.visibilityState!=='visible'||updatesPaused||activeTab!=='overview')return;
+        // Maintain a lightweight cache of the last seen quotes to avoid full DOM sweeps
+        window._lastLiveQuotes = window._lastLiveQuotes || new Map();
+        try{
+            const response=await fetch('/api/stream/quotes',{cache:'no-store'});
+            if(!response.ok)return;
+            const payload=await response.json();
+            const panel=[...view.querySelectorAll('.panel')].find(item=>
+                item.querySelector('h2')?.textContent==='Long-term holdings');
+            if(!panel)return;
+            let badge=panel.querySelector('.live-feed-status');
+            if(!badge){
+                badge=document.createElement('div');
+                badge.className='live-feed-status';
+                badge.setAttribute('role','status');
+                badge.setAttribute('aria-live','polite');
+                panel.querySelector('h2').insertAdjacentElement('afterend',badge);
+            }
+            const state=payload.status||'reconnecting';
+            const quotes=Array.isArray(payload.data)?payload.data:[];
+            // Build a byKey map for quick lookup
+            const byKey=new Map();
+            for(const item of quotes) if(item && item.instrument_key) byKey.set(String(item.instrument_key), item);
+
+            badge.dataset.state=state;
+            const baseStatus=state==='connected'
+                ?'Live market feed · '+quotes.length+' quote'+(quotes.length===1?'':'s')
+                :state==='connecting'?'Connecting to live market feed'
+                :'Live market feed reconnecting · snapshot prices retained';
+            badge.textContent=state==='reconnecting'&&payload.error
+                ?baseStatus+' · '+String(payload.error).slice(0,180)
+                :baseStatus;
+
+            const holdings=cache.holdings?.data||[];
+            // Only update rows whose price or timestamp actually changed to avoid heavy DOM work
+            const updates=[];
+            for(const [key,quote] of byKey){
+                const prev=window._lastLiveQuotes.get(key);
+                if(!prev || String(prev.last_price)!==String(quote.last_price) || String(prev.timestamp)!==String(quote.timestamp)){
+                    updates.push([key,quote]);
+                    if(updates.length>200)break; // throttle large updates
+                }
+            }
+
+            // Apply incremental updates by selecting rows directly instead of scanning all cells
+            for(const [key,quote] of updates){
+                try{
+                    const cell = view.querySelector('[data-instrument-key="'+CSS.escape(key)+'"]');
+                    if(!cell) continue;
+                    const row = cell.closest('tr');
+                    const price = Number(quote.last_price);
+                    if(!row || !Number.isFinite(price) || price<=0) continue;
+                    const lastPriceCell = row.cells[row.cells.length-2];
+                    if(lastPriceCell){
+                        lastPriceCell.classList.add('holding-live-price');
+                        lastPriceCell.textContent = price.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    }
+                    const holding = (cache.holdings?.data||[]).find(it=>String(it.instrument_token||'')===String(key));
+                    const pnlCell = row.cells[row.cells.length-1];
+                    const quantity = Number(holding?.quantity||0);
+                    const average = Number(holding?.average_price||0);
+                    if(pnlCell && Number.isFinite(quantity) && Number.isFinite(average) && average>0){
+                        const multiplier = Math.max(1, Number(holding?.multiplier)||1);
+                        pnlCell.textContent = ((price-average)*quantity*multiplier).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+                    }
+                }catch(e){console.warn('partial update failed',e)}
+            }
+
+            // Update summary metrics only when there are updates
+            if(updates.length){
+                const value = holdings.reduce((total,item)=>{
+                    const quote = byKey.get(String(item.instrument_token||''));
+                    const price = Number(quote?.last_price ?? item.last_price ?? 0);
+                    const quantity = Number(item.quantity||0);
+                    const multiplier = Math.max(1, Number(item.multiplier)||1);
+                    return total + (Number.isFinite(price) && Number.isFinite(quantity) ? price*quantity*multiplier : 0);
+                },0);
+                const metric=[...view.querySelectorAll('.metric')].find(item=>
+                    item.querySelector('.label')?.textContent==='Market value');
+                if(metric) metric.querySelector('b').textContent = 'INR '+value.toLocaleString('en-IN',{maximumFractionDigits:0});
+
+                const dayPnl = holdings.reduce((total,item)=>{
+                    const quote = byKey.get(String(item.instrument_token||''));
+                    const quantity = Number(item.quantity||0);
+                    if(!quote) return total + Number(item.day_change||0)*quantity;
+                    const price = Number(quote.last_price), close = Number(quote.close_price);
+                    return Number.isFinite(price) && price>0 && Number.isFinite(close) && close>0 && Number.isFinite(quantity)
+                        ? total + (price-close)*quantity
+                        : total + Number(item.day_change||0)*quantity;
+                },0);
+                const dayMetric=[...view.querySelectorAll('.metric')].find(item=>
+                    item.querySelector('.label')?.textContent==='Day P&L');
+                if(dayMetric) dayMetric.querySelector('b').textContent = dayPnl.toLocaleString('en-IN',{maximumFractionDigits:0});
+            }
+
+            // Save last seen quotes (only keys we received)
+            window._lastLiveQuotes = byKey;
+        }catch(error){
+            console.warn('Live quote refresh failed',error);
+        }
+    }
+    refreshLiveQuotes();
+    setInterval(refreshLiveQuotes,3000);
+})();
+</script>)JS";
+}
+
 std::string dashboardVersion() {
     return std::string("<script>document.querySelector('.kicker').insertAdjacentHTML('beforeend',' <span style=\"font-size:10px;letter-spacing:1px;color:var(--muted)\">v") +
-           PORTFOLIO_HEALTH_VERSION + "</span>');</script>" + dashboardSessionRecovery();
+           PORTFOLIO_HEALTH_VERSION + "</span>');</script>" + dashboardSessionRecovery() +
+           dashboardLiveFeedUi();
 }
 
 const char* deeperAnalysisStyles() {
@@ -496,10 +633,70 @@ function fail(e){const msg=e&&e.message?e.message:String(e),stale=/token|401|403
 function rows(data){return Object.entries(data).flatMap(([key,items])=>items.map(x=>({...x,instrument_key:key}))) }
 function decisionSummary(action){const normalized=(action||'').trim();if(!normalized)return 'Hold / wait';const lower=normalized.toLowerCase();if(lower.includes('consider'))return 'Consider adding';if(lower.includes('do not'))return 'Do not add';if(lower.includes('hold'))return 'Hold / wait';if(lower.includes('buy'))return 'Buy / review';if(lower.includes('sell'))return 'Sell / review';return normalized}
 function normalizeCategoryLabel(value){const label=String(value||'').trim();const map={'neutral news':'Neutral news','no recent news':'No recent news','going good':'going good','invest more':'invest more','sell it off':'sell it off'};return map[label.toLowerCase()]||label||'Neutral news'}
-async function holdings(){const p=await get('holdings','/api/holdings');let n={data:{},alerts:[]},newsUnavailable=false;try{n=await get('news','/api/news')}catch(error){newsUnavailable=true}const d=(p.data||[]).slice();const alerts=n.alerts||[];const byKey={};for(const x of alerts){byKey[x.instrument_key]=x;}d.sort((a,b)=>Number(byKey[b.instrument_token]?.confidence||0)-Number(byKey[a.instrument_token]?.confidence||0));if(confidenceOrder==='asc')d.reverse();const value=d.reduce((sum,x)=>sum+holdingValue(x),0),age=Number(p.snapshot_age_seconds||0),sourceStatus=p.source==='upstox-live'?d.length+' live holdings':p.source==='upstox-stale'?'cached holdings · '+age+'s old · live refresh unavailable':d.length+' local holdings · live data unavailable';status.textContent=sourceStatus+(newsUnavailable?' · news unavailable':'')+' · updated '+new Date().toLocaleTimeString();const warning=p.warning?'<div class="panel error" role="status">'+esc(p.warning)+'</div>':'',newsWarning=newsUnavailable?'<div class="panel error" role="status">News is temporarily unavailable; portfolio holdings are still shown.</div>':'';view.innerHTML=warning+newsWarning+'<div class="grid"><div class="metric"><span class="label">Holdings</span><b>'+d.length+'</b></div><div class="metric"><span class="label">Market value</span><b>INR '+value.toLocaleString('en-IN',{maximumFractionDigits:0})+'</b></div><div class="metric"><span class="label">Day P&amp;L</span><b>'+d.reduce((sum,x)=>sum+(x.day_change||0)*(x.quantity||0),0).toLocaleString('en-IN',{maximumFractionDigits:0})+'</b></div><div class="metric"><span class="label">Refresh</span><b>30 sec</b></div></div><div class="panel"><h2>Long-term holdings</h2><label class="label">Confidence order <select onchange="changeConfidenceOrder(this.value)"><option value="desc"'+(confidenceOrder==='desc'?' selected':'')+'>Highest first</option><option value="asc"'+(confidenceOrder==='asc'?' selected':'')+'>Lowest first</option></select></label><p>Hover over a stock to see what recent company news may mean. News is context, not a forecast.</p><div class="table-wrap"><table class="table"><tr><th>Symbol</th><th>Quantity</th><th>Average</th><th>Last</th><th>P&amp;L</th></tr>'+d.map(x=>{const key=x.instrument_token||'';const alert=byKey[key]||{};const items=(n.data||{})[key]||[];const article=items[0];const action=alert.action||'No recent news';const reason=alert.rationale||'No matching news in the recent feed';return '<tr><td class="holding-cell"><span class="holding-symbol" tabindex="0"><b>'+esc(x.trading_symbol||x.tradingsymbol)+'</b></span><span class="holding-insight"><strong>'+esc(decisionSummary(action))+'</strong>'+esc(reason)+(article?'<small>Latest: '+esc(article.heading)+'</small><a href="'+esc(article.article_link)+'" target="_blank" rel="noopener">Read related news</a>':'')+'</span></td><td>'+x.quantity+'</td><td>'+((x.average_price===undefined||x.average_price===null)?'—':x.average_price)+'</td><td>'+((x.last_price===undefined||x.last_price===null)?'—':x.last_price)+'</td><td>'+((x.pnl===undefined||x.pnl===null)?'—':x.pnl)+'</td></tr>'}).join('')+'</table></div></div>'}
+async function holdings(){
+    const p=await get('holdings','/api/holdings');
+    let n={data:{},alerts:[]},newsUnavailable=false;
+    try{n=await get('news','/api/news')}catch(error){newsUnavailable=true}
+    const data=(p.data||[]).slice(),alerts=n.alerts||[],byKey={};
+    for(const alert of alerts)byKey[alert.instrument_key]=alert;
+    data.sort((left,right)=>
+        Number(byKey[right.instrument_token]?.confidence||0)-
+        Number(byKey[left.instrument_token]?.confidence||0));
+    if(confidenceOrder==='asc')data.reverse();
+    const value=data.reduce((sum,item)=>sum+holdingValue(item),0);
+    const age=Number(p.snapshot_age_seconds||0);
+    const sourceStatus=p.source==='upstox-live'
+        ?data.length+' live holdings'
+        :p.source==='upstox-stale'
+            ?'cached holdings · '+age+'s old · live refresh unavailable'
+            :data.length+' local holdings · live data unavailable';
+    status.textContent=sourceStatus+(newsUnavailable?' · news unavailable':'')+
+        ' · updated '+new Date().toLocaleTimeString();
+    const warning=p.warning
+        ?'<div class="panel error" role="status">'+esc(p.warning)+'</div>':'';
+    const newsWarning=newsUnavailable
+        ?'<div class="panel error" role="status">News is temporarily unavailable; portfolio holdings are still shown.</div>'
+        :'';
+    const rows=data.map(item=>{
+        const key=String(item.instrument_token||''),alert=byKey[key]||{};
+        const articles=(n.data||{})[key]||[],article=articles[0];
+        const action=alert.action||'No recent news';
+        const reason=alert.rationale||'No matching news in the recent feed';
+        return '<tr><td class="holding-cell" data-instrument-key="'+esc(key)+'">'+
+            '<span class="holding-symbol" tabindex="0"><b>'+
+            esc(item.trading_symbol||item.tradingsymbol)+'</b></span>'+
+            '<span class="holding-insight"><strong>'+
+            esc(decisionSummary(action))+'</strong>'+esc(reason)+
+            (article?'<small>Latest: '+esc(article.heading)+'</small>'+
+                '<a href="'+esc(article.article_link)+
+                '" target="_blank" rel="noopener">Read related news</a>':'')+
+            '</span></td><td>'+item.quantity+'</td><td>'+
+            (item.average_price==null?'—':item.average_price)+'</td><td>'+
+            (item.last_price==null?'—':item.last_price)+'</td><td>'+
+            (item.pnl==null?'—':item.pnl)+'</td></tr>';
+    }).join('');
+    const dayPnl=data.reduce((sum,item)=>
+        sum+Number(item.day_change||0)*Number(item.quantity||0),0);
+    view.innerHTML=warning+newsWarning+
+        '<div class="grid"><div class="metric"><span class="label">Holdings</span><b>'+
+        data.length+'</b></div><div class="metric"><span class="label">Market value</span><b>INR '+
+        value.toLocaleString('en-IN',{maximumFractionDigits:0})+
+        '</b></div><div class="metric"><span class="label">Day P&amp;L</span><b>'+
+        dayPnl.toLocaleString('en-IN',{maximumFractionDigits:0})+
+        '</b></div><div class="metric"><span class="label">Refresh</span><b>30 sec</b></div></div>'+
+        '<div class="panel"><h2>Long-term holdings</h2>'+
+        '<label class="label">Confidence order <select onchange="changeConfidenceOrder(this.value)">'+
+        '<option value="desc"'+(confidenceOrder==='desc'?' selected':'')+
+        '>Highest first</option><option value="asc"'+(confidenceOrder==='asc'?' selected':'')+
+        '>Lowest first</option></select></label>'+
+        '<p>Hover over a stock to see what recent company news may mean. News is context, not a forecast.</p>'+
+        '<div class="table-wrap"><table class="table"><tr><th>Symbol</th><th>Quantity</th>'+
+        '<th>Average</th><th>Last</th><th>P&amp;L</th></tr>'+rows+
+        '</table></div></div>';
+}
 async function news(){let p=await get('news','/api/news'),a=rows(p.data||{}).sort((left,right)=>Number(right.published_time||0)-Number(left.published_time||0));status.textContent=(p.source==='upstox-stale'||p.source==='cached'?'Cached news · live refresh unavailable · ':'')+a.length+' market news articles · newest first';view.innerHTML=(p.warning?'<div class="panel error" role="status">'+esc(p.warning)+'</div>':'')+'<div class="panel"><h2>Market news</h2><p>Recent articles from the authenticated Upstox feed, matched to the symbols in <b>holding.csv</b> and sorted newest first.</p><div class="news">'+a.map(x=>'<article class="story"><small>'+esc(x.instrument_key)+'</small><h3>'+esc(x.heading)+'</h3><p>'+esc(x.summary||'')+'</p><a href="'+esc(x.article_link)+'" target="_blank" rel="noopener">Read article &rarr;</a></article>').join('')+'</div></div>'}
 async function alerts(){let p=await get('news','/api/news'),h=await get('holdings','/api/holdings'),byKey={};(p.alerts||[]).forEach(x=>byKey[x.instrument_key]=x);let a=(h.data||[]).map(x=>{let key=x.instrument_token||'',alert=byKey[key]||{},items=(p.data||{})[key]||[],article=items[0];return {...alert,instrument_key:key,company_name:x.company_name||x.trading_symbol||x.tradingsymbol||'Unknown company',article_count:items.length,article_link:article?.article_link||''}});a=sortByConfidence(a);status.textContent=a.length+' stocks in portfolio · updated '+new Date().toLocaleTimeString();view.innerHTML='<div class="panel"><h2>Should I add more?</h2><p>Every holding is shown, including stocks without recent matching news. Each row combines sentiment, article agreement, and recency. It is a review prompt, not an automatic trade.</p><label class="label">Confidence order <select onchange="changeConfidenceOrder(this.value)"><option value="desc"'+(confidenceOrder==='desc'?' selected':'')+'>Highest first</option><option value="asc"'+(confidenceOrder==='asc'?' selected':'')+'>Lowest first</option></select></label><div class="grid"><div class="metric"><span class="label">Consider adding</span><b>'+a.filter(x=>(x.action||'').startsWith('Consider')).length+'</b></div><div class="metric"><span class="label">Risk review</span><b>'+a.filter(x=>(x.action||'').startsWith('Do not')).length+'</b></div><div class="metric"><span class="label">Hold / wait</span><b>'+a.filter(x=>(x.action||'').startsWith('Hold')||!x.action).length+'</b></div><div class="metric"><span class="label">Total stocks</span><b>'+a.length+'</b></div></div><p><b>Consider adding</b> means positive news deserves review. <b>Do not add</b> means negative news deserves risk review. <b>Hold / wait</b> means the signal is mixed or not confident enough. Always read the articles and check valuation before acting.</p><div class="table-wrap"><table class="table"><tr><th>S.No</th><th>Company</th><th>News score</th><th>Confidence</th><th>Decision</th><th>Why</th><th>Articles</th></tr>'+a.map((x,index)=>'<tr><td>'+String(index+1)+'</td><td>'+esc(x.company_name)+'</td><td>'+Number(x.sentiment_score||0).toFixed(2)+'</td><td>'+Math.round(Number(x.confidence||0)*100)+'%</td><td><span class="decision '+((x.action||'').startsWith('Consider')?'decision-add':(x.action||'').startsWith('Do not')?'decision-risk':'decision-hold')+'">'+esc(x.action||'Hold / wait')+'</span></td><td>'+esc(x.rationale||'No matching news in the recent feed.')+(x.article_link?' <a href="'+esc(x.article_link)+'" target="_blank" rel="noopener">View news</a>':'')+'</td><td>'+x.article_count+'</td></tr>').join('')+'</table></div></div>'}
-async function raw(name,url,title){let p=await get(name,url);status.textContent='Live API response';view.innerHTML='<div class="panel"><div class="label">Runtime payload</div><h2>'+title+'</h2><p>Read only. This view exposes the raw server payload for the selected endpoint without modifying the stock API configuration.</p><pre style="white-space:pre-wrap;overflow:auto;font:12px/1.5 monospace">'+esc(JSON.stringify(p,null,2))+'</pre></div>'}
+async function raw(name,url,title){let p=await get(name,url);status.textContent='Live API response';try{const text=JSON.stringify(p,null,2);const MAX=200000;if(text.length>MAX){const preview=esc(text.slice(0,MAX))+'\n\n--- (truncated, click Download to save full payload) ---';view.innerHTML='<div class="panel"><div class="label">Runtime payload</div><h2>'+title+'</h2><p>Read only. Payload is large and truncated in-browser for stability. Use Download to save the full JSON.</p><pre style="white-space:pre-wrap;overflow:auto;font:12px/1.5 monospace">'+preview+'</pre><p><button id="downloadRaw" class="btn">Download full payload</button></p></div>';document.getElementById('downloadRaw').addEventListener('click',()=>{try{const blob=new Blob([text],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(title.replace(/[^a-z0-9]/gi,'_')||'payload')+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},15000)}catch(e){console.warn('download failed',e)}});}else{view.innerHTML='<div class="panel"><div class="label">Runtime payload</div><h2>'+title+'</h2><p>Read only. This view exposes the raw server payload for the selected endpoint without modifying the stock API configuration.</p><pre style="white-space:pre-wrap;overflow:auto;font:12px/1.5 monospace">'+esc(text)+'</pre></div>'}}catch(e){console.warn('render raw failed',e);view.innerHTML='<div class="panel error" role="status">Failed to display payload safely.</div>'}}
 async function health(){const [holdingsData, newsData] = await Promise.all([get('holdings','/api/holdings'), get('news','/api/news')]);const rows = holdingsData.data || [];const articles = Object.values(newsData.data || {}).reduce((sum, items) => sum + (Array.isArray(items) ? items.length : 0), 0);const alerts = (newsData.alerts || []).length;const missing = rows.filter(item => Number(item.last_price ?? item.lastPrice ?? 0) <= 0).length;status.textContent='Data health checked · '+new Date().toLocaleTimeString();view.innerHTML='<div class="panel"><div class="label">Runtime diagnostics</div><h2>Data health</h2><p>Operational readout for the current portfolio snapshot, filtered news set, and alert generation state.</p><div class="grid"><div class="metric"><span class="label">Holdings loaded</span><b>'+rows.length+'</b></div><div class="metric"><span class="label">News articles</span><b>'+articles+'</b></div><div class="metric"><span class="label">News decisions</span><b>'+alerts+'</b></div><div class="metric"><span class="label">Missing prices</span><b>'+missing+'</b></div></div><div class="table-wrap"><table class="table"><tr><th>Check</th><th>Status</th><th>Notes</th></tr><tr><td>Portfolio snapshot</td><td class="decision '+(rows.length?'decision-add':'decision-hold')+'">'+(rows.length?'Healthy':'Empty')+'</td><td>Requested holdings payload loaded from the current Upstox snapshot.</td></tr><tr><td>News filtering</td><td class="decision '+(articles?'decision-add':'decision-hold')+'">'+(articles?'Active':'Quiet')+'</td><td>Recent articles are filtered to the configuration-backed holdings list.</td></tr><tr><td>Alert generation</td><td class="decision '+(alerts?'decision-add':'decision-hold')+'">'+(alerts?'Generated':'Idle')+'</td><td>Alert decisions are computed from filtered sentiment, not stale browser state.</td></tr></table></div></div>'}
 async function config(){view.innerHTML='<div class="panel"><div class="label">Secure runtime settings</div><h2>Configuration</h2><p>Stock API traffic remains server-side only. Secrets are loaded from the environment and never exposed to the browser.</p><div class="grid"><div class="metric"><span class="label">Holdings source</span><b>config/holding.csv</b></div><div class="metric"><span class="label">News source</span><b>config/portfolio_news.json</b></div><div class="metric"><span class="label">Auth mode</span><b>Env + session</b></div><div class="metric"><span class="label">Security model</span><b>HTTPS only</b></div></div><p><strong>Operational guidance:</strong> this page summarises the approved configuration boundary, the file-based holdings filter, and the secure session secret path used for access control.</p></div>'}
 async function deeperAnalysis(){const p=await safeJsonFetch('/api/deeper-analysis',{status:'error',error:'Deeper analysis is unavailable right now.'});if(activeTab!=='deeper-analysis')return;if(p.status==='running'){status.textContent='Deeper analysis is running...';view.innerHTML='<div class="panel loading"><h2>Deeper analysis</h2><p>Comparing saved and fresh news. Other tabs remain available.</p></div>';return}if(p.status==='error')throw Error(p.error);let s=p.stocks||[];status.textContent=s.length+' stocks compared · '+new Date().toLocaleTimeString();view.innerHTML='<div class="panel"><div style="border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px"><div class="label">Portfolio intelligence</div><h2 style="font-size:32px;margin:6px 0 10px">How this ties to NLP sentiment</h2><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;font-family:Arial,sans-serif;font-size:13px"><div style="padding:12px 14px;background:#f0ebe1;border-left:3px solid var(--teal)"><b>01 · Know what you own</b><br><span style="color:var(--muted)">Portfolio Holdings API identifies the stocks in your account.</span></div><div style="padding:12px 14px;background:#f0ebe1;border-left:3px solid var(--orange)"><b>02 · Track live changes</b><br><span style="color:var(--muted)">Market quotes keep price context current.</span></div><div style="padding:12px 14px;background:#f0ebe1;border-left:3px solid var(--teal)"><b>03 · Overlay sentiment</b><br><span style="color:var(--muted)">NLP scores add meaning to live price and news feeds.</span></div><div style="padding:12px 14px;background:#f0ebe1;border-left:3px solid var(--orange)"><b>04 · Trigger review</b><br><span style="color:var(--muted)">Alerts surface threshold crossings for a human decision.</span></div><div style="padding:12px 14px;background:#f0ebe1;border-left:3px solid var(--teal);grid-column:1/-1"><b>05 · Validate the strategy</b><br><span style="color:var(--muted)">Historical data supports backtesting before any sentiment-driven workflow is trusted.</span></div></div></div><h2>Deeper analysis</h2><p>Saved portfolio news is compared with a fresh Python news sentiment run. Review every signal before acting.</p><div class="table-wrap"><table class="table"><tr><th>Stock</th><th>Saved news</th><th>Python news</th><th>Analysis</th><th>Action</th></tr>'+s.map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+esc(x.saved_signal)+'</td><td>'+esc(x.python_recommendation)+'</td><td>'+esc(x.analysis)+'</td><td class="decision">'+esc(x.action)+'</td></tr>').join('')+'</table></div></div>'}
@@ -1051,7 +1248,45 @@ std::vector<double> closePrices(const std::string& encodedCloses) {
 } // namespace
 
 WebServer::WebServer(const UpstoxClient& client, std::string holdingsFile, int port)
-    : client_(client), holdingsFile_(projectFile(holdingsFile).string()), port_(port) {}
+    : client_(client), holdingsFile_(projectFile(holdingsFile).string()), port_(port),
+      marketFeed_([this]() {
+          const auto authorization = client_.authorizeMarketDataFeed();
+          if (!authorization.ok) throw std::runtime_error(authorization.error);
+          return authorization.authorizedRedirectUri;
+      }) {}
+
+void WebServer::startMarketFeed(const std::string& holdingsPayload) {
+    try {
+        const json payload = json::parse(holdingsPayload);
+        if (payload.value("source", "") != "upstox-live") return;
+        const auto data = payload.find("data");
+        if (data == payload.end() || !data->is_array()) return;
+
+        std::vector<std::string> keys;
+        keys.reserve(std::min<std::size_t>(data->size(), 100));
+        std::unordered_set<std::string> seen;
+        for (const auto& item : *data) {
+            if (!item.is_object()) continue;
+            const auto instrument = item.find("instrument_token");
+            if (instrument == item.end() || !instrument->is_string()) continue;
+            const std::string key = instrument->get<std::string>();
+            if (StreamingClient::validInstrumentKey(key) && seen.insert(key).second) {
+                if (keys.size() == 100) {
+                    std::cerr << "Market feed subscription capped at 100 instruments.\n";
+                    break;
+                }
+                keys.push_back(key);
+            }
+        }
+        if (keys.empty()) return;
+        if (!marketFeed_.connect(keys)) {
+            std::cerr << "Market feed could not start: " << marketFeed_.lastError() << "\n";
+            return;
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "Market feed startup skipped: " << error.what() << "\n";
+    }
+}
 
 std::string WebServer::fundamentalsAnalysis(const std::string& symbol) const {
     const auto holdings = client_.getHoldings();
@@ -1793,8 +2028,26 @@ int WebServer::run() {
             } else if (path == "/api/market-feed/authorize") {
                 const auto authorization = client_.authorizeMarketDataFeed();
                 body = authorization.ok
-                    ? json({{"status", "success"}, {"authorized_redirect_uri", authorization.authorizedRedirectUri}}).dump()
+                    ? json({{"status", "success"}}).dump()
                     : json({{"error", authorization.error}}).dump();
+            } else if (path == "/api/stream/quotes") {
+                json quotes = json::array();
+                for (const auto& quote : marketFeed_.latestQuotes()) {
+                    quotes.push_back({
+                        {"instrument_key", quote.instrumentKey},
+                        {"last_price", quote.lastPrice},
+                        {"close_price", quote.close},
+                        {"timestamp", quote.timestamp},
+                    });
+                }
+                std::string lastError = marketFeed_.lastError();
+                if (lastError.size() > 180) lastError.resize(180);
+                body = json({
+                    {"status", marketFeed_.isConnected()
+                        ? "connected" : (lastError.empty() ? "connecting" : "reconnecting")},
+                    {"error", std::move(lastError)},
+                    {"data", std::move(quotes)},
+                }).dump();
             } else if (path.rfind("/api/rsi?closes=", 0) == 0) {
                 const auto closes = closePrices(queryValue(path, "closes"));
                 const auto periodText = queryValue(path, "period");
@@ -1935,6 +2188,7 @@ int WebServer::run() {
                     else if (path == "/api/positions") body = ensureValidJson(current->positions, json({{"status", "error"}, {"data", json::array()}, {"source", "unavailable"}}).dump());
                     else if (path == "/api/news") body = ensureValidJson(current->news, json({{"status", "error"}, {"data", json::object()}, {"alerts", json::array()}, {"source", "unavailable"}}).dump());
                     else body = current->metrics;
+                    if (path == "/api/holdings") startMarketFeed(current->holdings);
                     if (path == "/metrics") {
                         const std::string sessionCookie = "Set-Cookie: session=" +
                             cookieValue(requestText) +

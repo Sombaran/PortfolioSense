@@ -40,22 +40,21 @@ popup layout is tightened for consistent viewport alignment, and expired or
 unauthorized API responses are surfaced as secure redirect or retry states
 instead of exposing raw HTTP failures.
 
-### v2.0.2 Runtime TLS consistency
+### v2.0.2 Runtime TLS consistency (historical)
 
-The default build lets system libcurl own its verified HTTPS stack and does not
-directly mix Conan OpenSSL headers with a different system OpenSSL ABI. This
-avoids the certificate-store crashes seen in the live CLI and Web UI on hosts
-without matching OpenSSL development files. OpenSSL-backed helper features are
-enabled only when matching development files are available. HTTP redirects are
-disabled for authenticated API requests so bearer credentials cannot be
-forwarded outside the approved Upstox hosts.
+In v2.0.2 the build let system libcurl own its verified HTTPS stack to avoid
+mixing Conan OpenSSL headers with a different system OpenSSL ABI. Since v2.0.56,
+the standard CMake build uses the pinned Conan libcurl/OpenSSL dependency set,
+including WebSocket protocol support; authenticated API redirects remain
+disabled so bearer credentials cannot be forwarded outside approved Upstox
+hosts.
 
 ### v2.0.0 Enhancements
 
-**Real-time Streaming** — WebSocket connections to Upstox Market Data Feed V3 
-provide live quote updates and holdings changes without polling overhead. The 
-streaming infrastructure is thread-safe and integrates with the existing 
-authentication model.
+**Real-time Streaming** — The web server connects to Upstox Market Data Feed V3
+for authenticated holdings, decodes live quote updates, and serves cached
+prices to the authenticated dashboard through a same-origin JSON endpoint.
+Broker credentials and the authorized WebSocket URL remain server-side.
 
 **Technical Indicators** — Expanded indicator suite includes RSI, MACD, 
 Bollinger Bands, Stochastic Oscillator, and ATR, all computed in C++ for 
@@ -210,7 +209,8 @@ Non-goals:
 ```
 
 All modules use thread-safe design patterns and async I/O where applicable.
-Real-time streaming is optional and controlled via configuration.
+Real-time streaming starts when the web server receives a live Upstox holdings
+snapshot and is bounded to 100 subscribed instruments.
 Order execution requires explicit user authorization with configurable thresholds.
 
 The current deployment also starts `WebServer` with `--web`. It serves the
@@ -231,11 +231,13 @@ saved news signal by mapping Upstox instrument keys through live holdings.
 2. **Payload acquisition** — either
    * `--file` → read local JSON, or
    * live → `UpstoxClient` performs authenticated GETs via `HttpClient` and 
-     optionally `StreamingClient` establishes WebSocket for real-time updates.
+     `StreamingClient` establishes a verified WebSocket for live quote updates
+     when a live Upstox holdings snapshot is available.
    
 3. **Deserialisation** — the JSON `data` array is mapped 1:1 into
-   `std::vector<Position>` with optional streaming quote enhancements 
-   (see [LowLevelDesign](LowLevelDesign.md)).
+   `std::vector<Position>`. For live Upstox holdings, `StreamingClient`
+   separately updates the quote cache, which the Overview reads through the
+   authenticated local quote endpoint (see [LowLevelDesign](LowLevelDesign.md)).
    
 4. **Technical Analysis** — `TechnicalIndicators` module computes:
    * RSI (Relative Strength Index) for momentum

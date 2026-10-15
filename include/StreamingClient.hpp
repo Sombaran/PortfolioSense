@@ -7,20 +7,26 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <atomic>
+#include <thread>
 
 namespace folio {
 
 /**
  * @brief Real-time streaming client for Upstox Market Data Feed V3 (WebSocket).
  * 
- * Provides live quote streaming and holdings updates without polling.
- * Thread-safe quote cache serves the latest market data.
+ * Provides live quote streaming for subscribed instruments through the
+ * authenticated Upstox V3 feed. A thread-safe cache serves latest prices.
  * Handles automatic reconnection on network failure.
  * 
- * v2.0.0+: Replaces polling-based quote fetching with real-time WebSocket feeds.
+ * v2.0.56+: Requires a libcurl build with WSS protocol support, verified
+ * server-side WebSocket transport and bounded V3 feed
+ * decoding; the web server exposes only its local quote cache to the browser.
  */
 class StreamingClient {
 public:
+    using AuthorizationCallback = std::function<std::string()>;
+
     struct Quote {
         std::string instrumentKey;
         double lastPrice = 0.0;
@@ -44,6 +50,7 @@ public:
 
     explicit StreamingClient(std::string accessToken,
                              std::string baseUrl = "https://api.upstox.com");
+    explicit StreamingClient(AuthorizationCallback authorize);
     
     ~StreamingClient();
 
@@ -56,7 +63,8 @@ public:
     /**
      * @brief Connect to WebSocket and start streaming.
      * @param instrumentKeys Symbols to subscribe to.
-     * @return true on success, false otherwise.
+     * Starts the feed worker for a valid subscription. Connection is
+     * asynchronous; use isConnected() to observe the live connection state.
      */
     bool connect(const std::vector<std::string>& instrumentKeys);
 
@@ -69,6 +77,13 @@ public:
      * @brief Check if currently connected.
      */
     bool isConnected() const;
+    std::string lastError() const;
+    std::vector<Quote> latestQuotes() const;
+
+    static bool validInstrumentKey(const std::string& instrumentKey);
+    static bool supportsWebSocketProtocol();
+    static bool isTrustedWebSocketUrl(const std::string& url);
+    static std::vector<Quote> decodeFeedResponse(const std::string& payload);
 
     /**
      * @brief Subscribe to additional instruments.
@@ -117,16 +132,21 @@ public:
     void setAutoReconnect(bool enable, long delayMs = 5000);
 
 private:
-    std::string accessToken_;
-    std::string baseUrl_;
-    
+    AuthorizationCallback authorize_;
+
     mutable std::mutex quoteMutex_;
     std::map<std::string, Quote> quoteCache_;
     std::map<std::string, DepthData> depthCache_;
-    
-    bool connected_ = false;
-    bool autoReconnect_ = true;
-    long reconnectDelayMs_ = 5000;
+    std::string lastError_;
+    std::vector<std::string> instrumentKeys_;
+    std::vector<std::string> pendingMessages_;
+    std::atomic<bool> connected_{false};
+    std::atomic<bool> stopping_{false};
+    std::atomic<bool> workerRunning_{false};
+    std::atomic<bool> autoReconnect_{true};
+    std::atomic<long> reconnectDelayMs_{5000};
+    std::thread worker_;
+    mutable std::mutex workerMutex_;
 
     QuoteCallback quoteCallback_;
     DepthCallback depthCallback_;
@@ -135,6 +155,7 @@ private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 
+    void run();
     void onQuoteUpdate(const Quote& quote);
     void onDepthUpdate(const std::string& instrumentKey, const DepthData& depth);
 };

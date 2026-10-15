@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(portfolio_health VERSION 2.0.52 LANGUAGES CXX)
+project(portfolio_health VERSION 2.0.56 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PORTFOLIO_HEALTH_ENABLE_IPO "Enable interprocedural optimization" OFF)
@@ -154,6 +154,9 @@ if(BUILD_TESTING)
 
   target_link_libraries(portfolio_health_tests
     PRIVATE portfolio_health_core GTest::gtest_main
+  )
+  target_compile_definitions(portfolio_health_tests
+    PRIVATE PORTFOLIO_HEALTH_EXPECT_WSS=1
   )
 
   if(PORTFOLIO_HEALTH_ENABLE_COVERAGE)

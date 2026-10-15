@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.52
+Version: 2.0.56
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -8,14 +8,22 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 
 - Portfolio health scoring for holdings, concentration, and diversification
 - Live Upstox integration with hardened HTTPS and trusted-host validation
+- Server-side Upstox Market Data Feed V3 WebSocket with live Overview quotes
 - Upstox market-holiday and special-session awareness in the IST market status
 - Python-backed Deeper analysis for recent company/news context and recommendations
 - Browser UI for overview, news, alerts, analysis, fundamentals, and an Operations workspace
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
-- **[v2.0.51 release notes](design/RELEASE_NOTES_V2.0.51.md)** — refresh recovery and token guidance
+- **[v2.0.55 release notes](design/RELEASE_NOTES_V2.0.55.md)** — live-feed send reliability and actionable connection status
+- **[v2.0.55 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.55.md)** — market feed diagnostics, UI updates, and validation
+- **[v2.0.56 release notes](design/RELEASE_NOTES_V2.0.56.md)** — root cause and fix for unsupported WSS protocol
+- **[v2.0.56 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.56.md)** — WebSocket-enabled libcurl and live-feed validation
+- **[v2.0.54 release notes](design/RELEASE_NOTES_V2.0.54.md)** — Upstox V3 WebSocket feed and live Overview quotes
+- **[v2.0.54 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.54.md)** — streaming architecture, security boundaries, and validation
+- **[v2.0.53 release notes](design/RELEASE_NOTES_V2.0.53.md)** — JSON view grouped under Operations and responsive dashboard optimization
 - **[v2.0.52 release notes](design/RELEASE_NOTES_V2.0.52.md)** — sliding session renewal for long-running dashboard tabs
+- **[v2.0.51 release notes](design/RELEASE_NOTES_V2.0.51.md)** — refresh recovery and token guidance
 - Security-first handling around API tokens and external HTTP endpoints
 - Local monolith architecture with internal async task scheduling for background work
 - Safe extension path for future distributed workers only when real operational need exists
@@ -30,9 +38,41 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.52
+Current release: 2.0.56
 
-Last updated: October 13, 2026
+Last updated: October 15, 2026
+
+Version 2.0.56 fixes the root cause of the Overview's reconnect status:
+the system libcurl used by the prior build did not include the WSS protocol,
+so it rejected both the `wss` protocol restriction and the feed connection
+with `Unsupported protocol`. Builds now use the pinned Conan libcurl package
+with WebSocket support enabled. Startup also checks WSS capability explicitly
+and reports a clear configuration error rather than repeatedly reconnecting
+with an incompatible system library. TLS verification and the trusted Upstox
+host allowlist remain enforced. The post-login popup summarizes the fix.
+
+Version 2.0.55 fixes the Overview's generic live-feed reconnect state by
+retrying partial/non-blocking WebSocket writes until the complete subscription
+or heartbeat frame is sent, with a bounded timeout. The authenticated local
+quotes response includes a short connection diagnostic. Quote updates are
+matched by instrument key, and live Last, position P&L, market value, and Day
+P&L update consistently. The post-login release popup summarizes the fix.
+
+Version 2.0.54 implements the Upstox Market Data Feed V3 WebSocket in the
+server. It authorizes and validates the Upstox `wss://` endpoint, verifies TLS,
+subscribes to at most 100 live holdings, decodes bounded Protobuf updates, and
+serves cached prices through the authenticated local `/api/stream/quotes`
+route. The Overview refreshes prices without exposing broker credentials or
+the one-time authorized WebSocket URL to browser JavaScript. Live updates are
+limited to the visible Overview and pause with the existing dashboard pause
+control. The post-login popup summarizes the change.
+
+Version 2.0.53 moves the existing read-only holdings JSON view from the
+top-level navigation into Operations. It continues to use the authenticated
+holdings endpoint and safely escapes the displayed payload; it adds no Stock
+API route or browser-visible credential. Shared responsive layout and rendering
+optimizations continue across dashboard pages. The post-login release popup
+summarizes the change.
 
 Version 2.0.52 fixes the one-hour dashboard interruption: the login cookie
 expired exactly 60 minutes after login even while the user was actively
@@ -216,7 +256,11 @@ Build targets:
 
 ## Build
 
-The project supports both the existing CMake workflow and a Bazel build path for compatibility with alternative CI pipelines.
+The project supports the standard CMake/Conan workflow and a Bazel build path
+for compatibility with alternative CI pipelines. Use CMake/Conan for live
+Upstox streaming: that build pins libcurl with WSS support. A Bazel build that
+links a system libcurl without WSS reports a clear runtime diagnostic and
+cannot connect to the live feed.
 
 ```bash
 cd /home/ritup2404/baran-capital-view
@@ -239,11 +283,13 @@ Use either the numeric selector (`1` or `2`) or the explicit flags for build bac
 All dependencies are managed through **Conan** (`conanfile.py`) for reproducible builds across platforms:
 
 - **nlohmann_json 3.11.3** — JSON serialization/deserialization (managed via Conan since v2.0.10)
-- **libcurl** — HTTP client (optional via Conan with `use_conan_libcurl` option)
-- **OpenSSL** — TLS/HTTPS support (optional via Conan)
+- **libcurl** — Conan-managed HTTP/WebSocket client with WSS support enabled
+- **OpenSSL 3.2.1** — TLS/HTTPS support, managed through Conan
 - **GTest** — C++ testing framework (automatically integrated)
 
-The `conanfile.py` file is the single source of truth for all project requirements. Conan automatically generates CMake toolchain files and dependency metadata during the build process.
+The `conanfile.py` file defines the standard CMake build requirements. Conan
+automatically generates CMake toolchain files and dependency metadata during
+the build process.
 
 Add the local login secret to your shell environment or a protected local file before starting the browser UI:
 
@@ -376,7 +422,7 @@ Version 2.0.10 included:
 - **Removed vendored nlohmann header**: Eliminated `third_party/nlohmann/json.hpp` vendored copy
 - **Added Conan dependency**: `nlohmann_json/3.11.3` now managed through `conanfile.py`
 - **Simplified CMakeLists.txt**: Reduced dependency resolution from 35+ lines to 2 lines using `find_package(nlohmann_json REQUIRED)`
-- **Single source of truth**: All dependencies managed through Conan for consistency across CMake and Bazel builds
+- **Single source of truth**: CMake dependencies are managed through Conan; the legacy Bazel path uses its configured system libraries
 
 ### API resilience and error handling
 - **Fixed JSON parsing errors** that showed "unexpected character at line 1 column 1" on long-running sessions by validating all API responses before sending to the browser

@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <cstdint>
+#include <cstring>
 #include <thread>
 #include <vector>
 
@@ -19,6 +21,33 @@
 #include "UpstoxClient.hpp"
 #include "WebServer.hpp"
 #include "StreamingClient.hpp"
+
+namespace {
+
+void appendVarint(std::string& output, std::uint64_t value) {
+    while (value >= 0x80) {
+        output.push_back(static_cast<char>((value & 0x7f) | 0x80));
+        value >>= 7;
+    }
+    output.push_back(static_cast<char>(value));
+}
+
+void appendBytesField(std::string& output, unsigned field, const std::string& value) {
+    appendVarint(output, (field << 3) | 2);
+    appendVarint(output, value.size());
+    output += value;
+}
+
+void appendDoubleField(std::string& output, unsigned field, double value) {
+    appendVarint(output, (field << 3) | 1);
+    std::uint64_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    for (unsigned byte = 0; byte < 8; ++byte) {
+        output.push_back(static_cast<char>((bits >> (byte * 8)) & 0xff));
+    }
+}
+
+} // namespace
 
 TEST(SecurityUtils, ValidateSymbolAcceptsExpectedFormat) {
     EXPECT_TRUE(folio::security::validateSymbol("NSE_EQ|INE009A01021"));
@@ -432,10 +461,83 @@ TEST(TaskScheduler, SchedulesAndRunsTasks) {
 
 TEST(StreamingClient, ConnectAndReportConnectionState) {
     folio::StreamingClient client("token", "https://api.upstox.com");
-    EXPECT_TRUE(client.connect({"NSE_EQ|INE009A01021"}));
-    EXPECT_TRUE(client.isConnected());
+    EXPECT_FALSE(client.connect({}));
+    EXPECT_FALSE(client.isConnected());
+    EXPECT_FALSE(client.lastError().empty());
     client.disconnect();
     EXPECT_FALSE(client.isConnected());
+}
+
+#if defined(PORTFOLIO_HEALTH_EXPECT_WSS)
+TEST(StreamingClient, ConanBuildProvidesWssProtocol) {
+    EXPECT_TRUE(folio::StreamingClient::supportsWebSocketProtocol());
+}
+#endif
+
+TEST(StreamingClient, ValidatesTrustedFeedUrlsAndInstrumentKeys) {
+    EXPECT_TRUE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "wss://feed.upstox.com/path?authorized=opaque"));
+    EXPECT_TRUE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "wss://feed.upstox.com:443/path?authorized=opaque"));
+    EXPECT_FALSE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "wss://feed.upstox.com.attacker.example/path"));
+    EXPECT_FALSE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "https://feed.upstox.com/path"));
+    EXPECT_FALSE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "wss://user@feed.upstox.com/path"));
+    EXPECT_FALSE(folio::StreamingClient::isTrustedWebSocketUrl(
+        "wss://feed.upstox.com:8443/path"));
+    EXPECT_TRUE(folio::StreamingClient::validInstrumentKey("NSE_EQ|INE009A01021"));
+    EXPECT_TRUE(folio::StreamingClient::validInstrumentKey("NSE_INDEX|Nifty Bank"));
+    EXPECT_FALSE(folio::StreamingClient::validInstrumentKey("NSE_EQ|"));
+    EXPECT_FALSE(folio::StreamingClient::validInstrumentKey("NSE_EQ|ABC?refresh=1"));
+}
+
+TEST(StreamingClient, RejectsSubscriptionsOverUpstoxConnectionLimit) {
+    bool authorizationRequested = false;
+    folio::StreamingClient client([&authorizationRequested]() {
+        authorizationRequested = true;
+        return "wss://feed.upstox.com/path";
+    });
+    std::vector<std::string> keys;
+    for (unsigned index = 0; index < 101; ++index) {
+        keys.push_back("NSE_EQ|TEST" + std::to_string(index));
+    }
+
+    EXPECT_FALSE(client.connect(keys));
+    EXPECT_FALSE(authorizationRequested);
+    EXPECT_NE(client.lastError().find("1 to 100"), std::string::npos);
+}
+
+TEST(StreamingClient, DecodesUpstoxV3ProtobufLtpcFeed) {
+    std::string ltpc;
+    appendDoubleField(ltpc, 1, 123.45);
+    appendVarint(ltpc, 2 << 3);
+    appendVarint(ltpc, 1729000000000ULL);
+    appendVarint(ltpc, 3 << 3);
+    appendVarint(ltpc, 18);
+    appendDoubleField(ltpc, 4, 120.0);
+
+    std::string feed;
+    appendBytesField(feed, 1, ltpc);
+    std::string mapEntry;
+    appendBytesField(mapEntry, 1, "NSE_EQ|INE009A01021");
+    appendBytesField(mapEntry, 2, feed);
+    std::string response;
+    appendBytesField(response, 2, mapEntry);
+
+    const auto quotes = folio::StreamingClient::decodeFeedResponse(response);
+    ASSERT_EQ(quotes.size(), 1u);
+    EXPECT_EQ(quotes[0].instrumentKey, "NSE_EQ|INE009A01021");
+    EXPECT_DOUBLE_EQ(quotes[0].lastPrice, 123.45);
+    EXPECT_DOUBLE_EQ(quotes[0].close, 120.0);
+    EXPECT_EQ(quotes[0].timestamp, 1729000000000L);
+    EXPECT_EQ(quotes[0].volume, 18L);
+}
+
+TEST(StreamingClient, RejectsMalformedProtobufFeed) {
+    EXPECT_THROW(folio::StreamingClient::decodeFeedResponse(std::string("\x12\x05x", 3)),
+                 std::runtime_error);
 }
 
 TEST(UpstoxClient, ConstructorAcceptsRuntimeBaseUrl) {
