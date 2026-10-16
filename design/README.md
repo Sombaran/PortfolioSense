@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.56`
+**Version:** `2.0.66`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -62,6 +62,26 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.66](RELEASE_NOTES_V2.0.66.md)** — show actionable causes for Upstox auth and network refresh failures
+- **[Implementation Summary v2.0.66](IMPLEMENTATION_SUMMARY_V2.0.66.md)** — safe refresh diagnostics and retained view behavior
+- **[Release Notes v2.0.65](RELEASE_NOTES_V2.0.65.md)** — prevent manual Refresh failure when it overlaps an initial portfolio snapshot
+- **[Implementation Summary v2.0.65](IMPLEMENTATION_SUMMARY_V2.0.65.md)** — coalesce forced refreshes with an in-flight snapshot
+- **[Release Notes v2.0.64](RELEASE_NOTES_V2.0.64.md)** — recover transient holdings transport failures during manual refresh
+- **[Implementation Summary v2.0.64](IMPLEMENTATION_SUMMARY_V2.0.64.md)** — bounded retry and dashboard timeout budgeting
+- **[Release Notes v2.0.63](RELEASE_NOTES_V2.0.63.md)** — Day P&L visibility and refresh-card layout fix
+- **[Implementation Summary v2.0.63](IMPLEMENTATION_SUMMARY_V2.0.63.md)** — live-update-safe masking and regression coverage
+- **[Release Notes v2.0.62](RELEASE_NOTES_V2.0.62.md)** — one Refresh label and Market value visibility control
+- **[Implementation Summary v2.0.62](IMPLEMENTATION_SUMMARY_V2.0.62.md)** — accessible value masking and regression coverage
+- **[Release Notes v2.0.61](RELEASE_NOTES_V2.0.61.md)** — bound backend snapshot requests for reliable manual refresh
+- **[Implementation Summary v2.0.61](IMPLEMENTATION_SUMMARY_V2.0.61.md)** — bounded upstream calls and browser deadline alignment
+- **[Release Notes v2.0.60](RELEASE_NOTES_V2.0.60.md)** — make manual retry reliable during automatic polling
+- **[Implementation Summary v2.0.60](IMPLEMENTATION_SUMMARY_V2.0.60.md)** — direct button listeners and queued refresh
+- **[Release Notes v2.0.59](RELEASE_NOTES_V2.0.59.md)** — stalled requests no longer block manual refresh
+- **[Implementation Summary v2.0.59](IMPLEMENTATION_SUMMARY_V2.0.59.md)** — request timeout and reliable refresh actions
+- **[Release Notes v2.0.58](RELEASE_NOTES_V2.0.58.md)** — Alerts observer loop root cause and dashboard stability
+- **[Implementation Summary v2.0.58](IMPLEMENTATION_SUMMARY_V2.0.58.md)** — idempotent normalization and reduced observer workload
+- **[Release Notes v2.0.57](RELEASE_NOTES_V2.0.57.md)** — live refresh crash prevention and dashboard performance
+- **[Implementation Summary v2.0.57](IMPLEMENTATION_SUMMARY_V2.0.57.md)** — bounded polling, authenticated data handling, and tests
 - **[Release Notes v2.0.56](RELEASE_NOTES_V2.0.56.md)** — root cause and fix for builds using libcurl without WSS
 - **[Implementation Summary v2.0.56](IMPLEMENTATION_SUMMARY_V2.0.56.md)** — WebSocket-enabled dependency and capability guard
 - **[Release Notes v2.0.55](RELEASE_NOTES_V2.0.55.md)** — reliable WebSocket sends, live quote matching, and reconnect diagnostics
@@ -132,6 +152,16 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.66` — Show safe, actionable Refresh failure messages for rejected Upstox access tokens (HTTP 401/403), DNS/network failures, and other snapshot errors instead of suppressing the cause when the dashboard has rendered data; preserve the existing view, avoid returning raw backend exception details, and explain token renewal/network recovery in the login popup.
+- `2.0.65` — Fix manual Refresh failing when it collides with the first in-flight server snapshot and no cached or local data exists: wait for the snapshot lock, reuse a snapshot created while waiting, and preserve the non-forced stale/local fallback path; retain authenticated Stock API access and server-side credentials and summarize the fix in the post-login popup.
+- `2.0.64` — Retry the required Upstox holdings request once for retryable transport errors and set a shared 50-second browser deadline to cover the bounded server-side snapshot request budget; keep optional positions/news failures isolated, preserve auth and server-side credentials, and summarize the fix in the post-login popup.
+- `2.0.63` — Fix the Overview refresh button overlapping its label by removing the `Manual` wording and placing the action beneath `Update`; add an accessible Day P&L eye control, store only each metric's visibility preference, preserve masking across live updates and rerenders, and summarize the fix in the post-login popup without changing authenticated Stock API access.
+- `2.0.62` — Remove duplicate Refresh wording from the Overview metric by labeling it Manual update, add an accessible eye button to hide/show Market value, retain only the visibility preference locally, and keep live quote updates synchronized with hidden state; preserve existing refresh behavior and authenticated server-side Stock API access and document the change in the post-login popup.
+- `2.0.61` — Fix the root cause of repeated Refresh failures: browser calls timed out while the server still held the snapshot lock during up to three sequential Upstox requests, each with 30-second timeouts and retries. Bound holdings, positions, and news calls made by snapshot generation to one 10-second attempt each and align browser request deadlines to 35 seconds; keep existing manual refresh queuing, authentication, and rate limiting and document the fix in the post-login popup.
+- `2.0.60` — Fix the visible retry control not triggering a new authenticated snapshot request: bind directly to retry and metric refresh buttons when created, queue manual refresh clicks that occur during a single-flight automatic request, and use a common refresh finalizer across polling/wake/manual paths; retain v2.0.59 request timeouts and server-side API credentials and summarize this in the post-login popup.
+- `2.0.59` — Fix manual refresh getting stuck behind dashboard API requests that never complete: apply a 15-second abort timeout through response-body consumption, restore refresh controls reliably, and route Overview and retry buttons through delegated click handling; preserve authenticated server-side Stock API access and summarize the fix in the post-login popup.
+- `2.0.58` — Fix an Alerts MutationObserver feedback loop caused by assigning the same heading text on every observed descendant mutation; make normalization idempotent and scope page-level observers to top-level rendered-view changes to avoid repeated full-page scans during live updates.
+- `2.0.57` — Prevent stalled live-quote responses from accumulating overlapping browser requests with a single-flight guard, bounded timeout, and hidden-tab cancellation; use constant-time quote-to-holding lookup and preserve the authenticated server-side Stock API boundary; document the fix in the post-login popup.
 - `2.0.56` — Fix the root cause of `Unsupported protocol`: the distro libcurl did not advertise WSS support. Pin a Conan libcurl release with `with_websockets=True`, make that dependency the standard build, and fail clearly at startup if a direct/non-Conan build lacks WSS; retain the existing trusted-host and TLS checks and document the correction in the login popup.
 - `2.0.55` — Resume partial/non-blocking WebSocket writes and ping responses until complete with a bounded timeout; return a short authenticated feed diagnostic to the Overview; correlate each quote by instrument key and refresh row-level live Last/P&L values; retain TLS and URL validation and document the post-login fix popup.
 - `2.0.54` — Implement Upstox Market Data Feed V3 over a verified server-side WebSocket, constrain subscriptions to 100 validated instrument keys, decode bounded Protobuf frames, expose only cached quotes through an authenticated same-origin endpoint, update the visible Overview without disclosing the authorized URL or token, and document the release in the post-login popup.

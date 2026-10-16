@@ -233,7 +233,14 @@ def test_dashboard_snapshot_retries_are_bounded_and_failures_are_isolated():
     assert '"snapshot_age_seconds"' in snapshot
     assert "Renew UPSTOX_ACCESS_TOKEN and restart the dashboard." in snapshot
     assert "isAccessTokenStale(snapshotRefreshError_)" in snapshot
-    assert snapshot.index("fresh->created =") > snapshot.index('client_.getNews("holdings")')
+    assert "constexpr long snapshotRequestTimeoutSeconds = 10" in snapshot
+    assert "constexpr int snapshotHoldingsTransportAttempts = 2" in snapshot
+    assert "client_.getHoldings(\n        snapshotRequestTimeoutSeconds, snapshotHoldingsTransportAttempts)" in snapshot
+    assert "client_.getPositions(snapshotRequestTimeoutSeconds, 1)" in snapshot
+    assert 'client_.getNews("holdings", snapshotRequestTimeoutSeconds, 1)' in snapshot
+    assert snapshot.index("fresh->created =") > snapshot.index(
+        'client_.getNews("holdings", snapshotRequestTimeoutSeconds, 1)'
+    )
     assert "last successful news snapshot" in snapshot
     assert "Portfolio news is temporarily unavailable." in snapshot
     assert "catch(error){newsUnavailable=true}" in overview
@@ -273,8 +280,11 @@ def test_web_server_handles_slow_snapshots_concurrently_with_a_connection_limit(
     )[1].split("\nint WebServer::run()", 1)[0]
     server = source.split("int WebServer::run()", 1)[1]
 
-    assert "std::unique_lock<std::mutex> refreshLock(refreshMutex_, std::try_to_lock)" in snapshot
-    assert "if (!refreshLock.owns_lock())" in snapshot
+    assert "std::unique_lock<std::mutex> refreshLock(refreshMutex_, std::defer_lock)" in snapshot
+    assert "const bool refreshInProgress = !refreshLock.try_lock()" in snapshot
+    assert "if (refreshInProgress && forceRefresh)" in snapshot
+    assert "refreshLock.lock()" in snapshot
+    assert "else if (refreshInProgress)" in snapshot
     assert "if (current) return staleSnapshot(current, tokenExpired)" in snapshot
     assert "maxConcurrentConnections = 8" in server
     assert "std::thread([this, connection, &activeConnections]" in server
@@ -283,15 +293,53 @@ def test_web_server_handles_slow_snapshots_concurrently_with_a_connection_limit(
     assert "releaseNoticeV2049Addendum()" in server
 
 
+def test_manual_refresh_waits_for_inflight_initial_snapshot_and_reuses_it():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    snapshot = source.split(
+        "std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh) const",
+        1,
+    )[1].split("\nint WebServer::run()", 1)[0]
+    forced_contention = snapshot.split(
+        "if (refreshInProgress && forceRefresh)", 1
+    )[1].split("else if (refreshInProgress)", 1)[0]
+
+    assert "refreshLock.lock()" in forced_contention
+    assert "MutexGuard lock(snapshotMutex_)" in forced_contention
+    assert "snapshot_ && snapshot_->created >= now" in forced_contention
+    assert "return snapshot_" in forced_contention
+    assert "portfolio snapshot refresh is in progress" not in forced_contention
+
+
 def test_background_refresh_failure_retains_last_rendered_dashboard():
     source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
     failure = source.split("function fail(e)", 1)[1].split("\nfunction rows", 1)[0]
 
     assert "hasRenderedView=view.childElementCount>0&&!view.querySelector('.loading,[role=\"alert\"]')" in failure
-    assert "the last displayed data is retained. Use Refresh to retry." in failure
+    assert "+msg+' The last displayed data is retained.'" in failure
+    assert "Live refresh unavailable · review the warning above" in failure
     assert "view.prepend(warning)" in failure
     assert "view.innerHTML='<section class=\"panel error\"" in failure
-    assert "Live refresh unavailable · current view retained" in failure
+    assert "Live refresh unavailable · review the warning above" in failure
+
+
+def test_refresh_errors_explain_upstream_auth_and_dns_failures_safely():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    safe_error = source.split("std::string userSafeSnapshotError(", 1)[1].split(
+        "\nbool validAnalysisSymbol", 1
+    )[0]
+    fetcher = source.split("function apiFailure(name,detail,statusCode)", 1)[1].split(
+        "\nconst DASHBOARD_REQUEST_TIMEOUT_MS", 1
+    )[0]
+    server = source.split("} catch (const std::exception& e) {", 1)[-1].split(
+        "\n                }\n            } else if (path == \"/api/config\")", 1
+    )[0]
+
+    assert "Upstox rejected the access token (HTTP 401/403)" in safe_error
+    assert "DNS or network failure" in safe_error
+    assert "Check the private dashboard log for details" in safe_error
+    assert "upstreamNetwork" in fetcher
+    assert "Could not reach the dashboard server" in fetcher
+    assert "userSafeSnapshotError(e.what())" in server
 
 
 def test_manual_refresh_bypasses_server_backoff_with_a_rate_limit():
@@ -309,9 +357,7 @@ def test_manual_refresh_bypasses_server_backoff_with_a_rate_limit():
     )[1].split("\nint WebServer::run()", 1)[0]
 
     assert "manualRefreshRequested=true" in refresh_ui
-    assert "button.disabled=true" in refresh_ui
-    assert "button.textContent='Refreshing...'" in refresh_ui
-    assert "button.disabled=false" in refresh_ui
+    assert "refreshControls(true)" in refresh_ui
     assert "manualRefreshRequested&&['/api/holdings','/api/positions','/api/news'].includes(url)" in fetcher
     assert "requestUrl=url+'?refresh=1'" in fetcher
     assert "snapshot(bool forceRefresh = false)" in header
@@ -323,6 +369,82 @@ def test_manual_refresh_bypasses_server_backoff_with_a_rate_limit():
     assert "if (!forceRefresh && checkedAt < snapshotRetryAfter_)" in snapshot
     assert "if (checkedAt < manualRefreshAfter_)" in snapshot
     assert "releaseNoticeV2046Addendum()" in source
+
+
+def test_stalled_dashboard_requests_release_manual_refresh_controls():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    fetcher = source.split("async function get(name,url)", 1)[1].split(
+        "\nasync function safeJsonParse", 1
+    )[0]
+    safe_fetch = source.split("async function safeJsonFetch(url,fallback)", 1)[1].split(
+        "\nfunction filterView", 1
+    )[0]
+    refresh = source.split("function refreshView()", 1)[1].split(
+        "const baseSafeJsonFetch", 1
+    )[0]
+    metric = source.split("function normalizeRefreshMetric()", 1)[1].split(
+        "\nfunction normalizeDeeperAnalysis", 1
+    )[0]
+    failure = source.split("function fail(e)", 1)[1].split("\nfunction rows", 1)[0]
+
+    assert "new AbortController()" in fetcher
+    assert "const DASHBOARD_REQUEST_TIMEOUT_MS=50000" in source
+    assert "setTimeout(()=>controller.abort(),DASHBOARD_REQUEST_TIMEOUT_MS)" in fetcher
+    assert "signal:controller.signal" in fetcher
+    assert fetcher.index("response=await fetch") < fetcher.index(
+        "text=await response.text()"
+    ) < fetcher.index("clearTimeout(timeout)")
+    assert "new AbortController()" in safe_fetch
+    assert "setTimeout(()=>controller.abort(),DASHBOARD_REQUEST_TIMEOUT_MS)" in safe_fetch
+    assert "signal:controller.signal" in safe_fetch
+    assert "const payload=await safeJsonParse(response,effectiveFallback)" in safe_fetch
+    assert "finally{clearTimeout(timeout)}" in safe_fetch
+    assert "return openTab(activeTab,false).finally(finishRefresh)" in refresh
+    assert "function refreshControls(disabled){document.querySelectorAll('#refresh-view,.metric-refresh,[data-refresh-dashboard]')" in source
+    assert "manualRefreshPending=true" in refresh
+    assert "Refresh queued; waiting for the current request to finish..." in refresh
+    assert "function finishRefresh(){refreshInFlight=false;if(manualRefreshPending){manualRefreshPending=false;refreshView();return}" in source
+    assert "button.className='metric-refresh'" in metric
+    assert "button.addEventListener('click',refreshView)" in metric
+    assert "onclick=" not in metric
+    assert "view.querySelector('[data-refresh-dashboard]').addEventListener('click',refreshView)" in failure
+    assert "data-refresh-dashboard" in failure
+    assert "onclick=" not in failure
+    assert "openTab(activeTab,false).finally(finishRefresh)" in source
+    assert "refreshInFlight=true;openTab('overview').then(sortOverviewRows).finally(finishRefresh)" in source
+    assert "if(updatesPaused||refreshInFlight)return" in source
+
+
+def test_overview_refresh_label_and_market_value_visibility_control():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    overview = source.split("async function holdings()", 1)[1].split(
+        "\nasync function news()", 1
+    )[0]
+    visibility = source.split("function setMetricVisibility(metric,hidden", 1)[1].split(
+        "\nfunction normalizeDeeperAnalysis", 1
+    )[0]
+    optimization = source.split("const char* dashboardPageOptimization()", 1)[1].split(
+        "const char* releaseNoticeV2036Addendum()", 1
+    )[0]
+
+    assert '<span class="label">Update</span>' in overview
+    assert "Manual update" not in overview
+    assert ".metric-refresh{display:block;margin-top:8px" in optimization
+    assert 'class="market-value-toggle" type="button"' in overview
+    assert 'aria-label="Hide market value"' in overview
+    assert 'data-visibility-toggle="day-pnl"' in overview
+    assert 'aria-label="Hide Day P&amp;L"' in overview
+    assert "data-visible-value" not in overview
+    assert "aria-pressed" in visibility
+    assert "baran-capital-view-hide-market-value" in source
+    assert "baran-capital-view-hide-day-pnl" in source
+    assert "amount.textContent!==text" in visibility
+    assert "setMetricVisibility('day-pnl',!dayPnlHidden,true)" in visibility
+    assert "setMetricVisibility('market-value',!marketValueHidden,true)" in visibility
+    assert "setMarketValueText('INR '+value.toLocaleString" in source
+    assert "setDayPnlText(dayPnl.toLocaleString" in source
+    assert "metric?.querySelector('.market-value-amount')" in optimization
+    assert "setMarketValueText(unavailable)" in optimization
 
 
 def test_query_routes_preserve_parameters_and_fundamentals_popup_wraps():
@@ -416,8 +538,8 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
     assert "Renew UPSTOX_ACCESS_TOKEN and restart the dashboard." in optimization
     assert "window.summaryDashboard=async function()" in optimization
     assert ".metric-refresh:disabled" in optimization
-    assert "inlineButtons.forEach(item=>{item.disabled=true" in refresh
-    assert "item.textContent='Refresh now'" in refresh
+    assert "function refreshControls(disabled)" in source
+    assert "button.textContent=button.id==='refresh-view'?'Refresh'" in source
     assert "Reliable refresh and token guidance · v2.0.51" in release
     assert "Refresh cannot renew the server-side credential" in release
     assert "response.redirected&&new URL(response.url,window.location.origin).pathname==='/login'" in session_recovery
@@ -428,17 +550,108 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.56" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.56"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.56"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.56" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.56`" in (root / "design" / "README.md").read_text()
-    release = (root / "design" / "RELEASE_NOTES_V2.0.56.md").read_text()
-    assert "Unsupported protocol" in release
+    assert "VERSION 2.0.66" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.66"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.66"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.66" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.66`" in (root / "design" / "README.md").read_text()
+    release66 = (root / "design" / "RELEASE_NOTES_V2.0.66.md").read_text()
+    assert "HTTP 401" in release66
+    assert "login popup" in release66
+    implementation66 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.66.md").read_text()
+    assert "DNS" in implementation66
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2066Addendum()" in source
+    assert "Refresh diagnostics · v2.0.66" in source
+    release65 = (root / "design" / "RELEASE_NOTES_V2.0.65.md").read_text()
+    assert "initial portfolio snapshot" in release65
+    assert "login popup" in release65
+    implementation65 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.65.md").read_text()
+    assert "refreshLock.lock()" in implementation65
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2065Addendum()" in source
+    assert "Concurrent refresh recovery · v2.0.65" in source
+    release64 = (root / "design" / "RELEASE_NOTES_V2.0.64.md").read_text()
+    assert "retryable transport failures" in release64
+    assert "login popup" in release64
+    implementation64 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.64.md").read_text()
+    assert "snapshotHoldingsTransportAttempts" in implementation64
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2064Addendum()" in source
+    assert "Refresh recovery · v2.0.64" in source
+    release63 = (root / "design" / "RELEASE_NOTES_V2.0.63.md").read_text()
+    assert "eye control beside Day P&L" in release63
+    assert "login popup" in release63
+    implementation63 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.63.md").read_text()
+    assert "baran-capital-view-hide-day-pnl" in implementation63
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2063Addendum()" in source
+    assert "Overview privacy and layout · v2.0.63" in source
+    release62 = (root / "design" / "RELEASE_NOTES_V2.0.62.md").read_text()
+    assert "eye button" in release62
+    assert "login popup" in release62
+    implementation62 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.62.md").read_text()
+    assert "localStorage" in implementation62
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2062Addendum()" in source
+    assert "Overview privacy and controls · v2.0.62" in source
+    release61 = (root / "design" / "RELEASE_NOTES_V2.0.61.md").read_text()
+    assert "single 10-second transport attempt" in release61
+    assert "login popup" in release61
+    assert "releaseNoticeV2061Addendum()" in source
+    assert "Snapshot request recovery · v2.0.61" in source
+    release60 = (root / "design" / "RELEASE_NOTES_V2.0.60.md").read_text()
+    assert "queued" in release60
+    assert "login popup" in release60
+    release59 = (root / "design" / "RELEASE_NOTES_V2.0.59.md").read_text()
+    assert "response-body reading" in release59
+    assert "login popup" in release59
+    assert "releaseNoticeV2060Addendum()" in source
+    assert "Refresh and retry reliability · v2.0.60" in source
+    assert "releaseNoticeV2059Addendum()" in source
+    assert "Manual refresh recovery · v2.0.59" in source
+    release = (root / "design" / "RELEASE_NOTES_V2.0.58.md").read_text()
+    assert "Updating `textContent` creates a child-list mutation" in release
     assert "login popup" in release
     conan_recipe = (root / "conanfile.py").read_text()
     assert 'self.requires("libcurl/8.22.0")' in conan_recipe
     assert '"libcurl/*:with_websockets": True' in conan_recipe
+
+
+def test_alerts_observer_does_not_trigger_itself_repeatedly():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    alerts_ui = source.split("function normalizeAlertsControls()", 1)[1].split(
+        "function normalizeDeeperCategories()", 1
+    )[0]
+    shared_view_observer = (
+        "new MutationObserver(()=>{addSerialNumbers();normalizeRefreshMetric();"
+        "normalizeDeeperAnalysis()}).observe(view,{childList:true})"
+    )
+
+    assert "heading&&heading.textContent.trim()!=='Portfolio news review'" in alerts_ui
+    assert "new MutationObserver(normalizeAlertsControls).observe(view,{childList:true})" in alerts_ui
+    assert "normalizeAlertsControls).observe(view,{childList:true,subtree:true})" not in alerts_ui
+    assert shared_view_observer in source
+    assert "releaseNoticeV2058Addendum()" in source
+
+
+def test_live_quote_polling_is_bounded_and_retains_all_quote_updates():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    quotes_ui = source.split("const char* dashboardLiveFeedUi()", 1)[1].split(
+        "std::string dashboardVersion()", 1
+    )[0]
+    composition = source.split("html.replace(html.find(marker)", 1)[1].split(
+        "const std::string head", 1
+    )[0]
+
+    assert "if(quoteRefreshInFlight)return" in quotes_ui
+    assert "setTimeout(()=>controller.abort(),8000)" in quotes_ui
+    assert "signal:controller.signal" in quotes_ui
+    assert "quoteRefreshController?.abort()" in quotes_ui
+    assert "holdingsByKey.get(key)" in quotes_ui
+    assert "updates.length>200" not in quotes_ui
+    assert "releaseNoticeV2057Addendum()" in source
+    assert "releaseNoticeV2052Addendum()" in composition
 
 
 def test_stream_quotes_are_local_and_authorized_feed_url_is_not_returned():

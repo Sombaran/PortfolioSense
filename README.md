@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.56
+Version: 2.0.66
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -15,10 +15,30 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
-- **[v2.0.55 release notes](design/RELEASE_NOTES_V2.0.55.md)** — live-feed send reliability and actionable connection status
-- **[v2.0.55 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.55.md)** — market feed diagnostics, UI updates, and validation
+- **[v2.0.66 release notes](design/RELEASE_NOTES_V2.0.66.md)** — display actionable Upstox authorization and network causes when Refresh fails
+- **[v2.0.66 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.66.md)** — retain existing data and expose safe refresh diagnostics
+- **[v2.0.65 release notes](design/RELEASE_NOTES_V2.0.65.md)** — prevent manual Refresh from failing when it overlaps an initial portfolio snapshot
+- **[v2.0.65 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.65.md)** — wait for and reuse an in-flight snapshot during concurrent manual refresh
+- **[v2.0.64 release notes](design/RELEASE_NOTES_V2.0.64.md)** — retry transient holdings transport failures and provide adequate refresh request time
+- **[v2.0.64 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.64.md)** — bounded upstream retry and browser/backend timeout alignment
+- **[v2.0.63 release notes](design/RELEASE_NOTES_V2.0.63.md)** — add Day P&L visibility and fix Overview refresh control overlap
+- **[v2.0.63 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.63.md)** — synchronize privacy toggles with live quote updates and improve metric layout
+- **[v2.0.62 release notes](design/RELEASE_NOTES_V2.0.62.md)** — remove duplicate Refresh wording and add Market value visibility control
+- **[v2.0.62 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.62.md)** — accessible value masking, preference persistence, and regression coverage
+- **[v2.0.61 release notes](design/RELEASE_NOTES_V2.0.61.md)** — bound server-side snapshot calls so manual refresh recovers reliably
+- **[v2.0.61 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.61.md)** — align backend request budgets with dashboard timeouts
+- **[v2.0.60 release notes](design/RELEASE_NOTES_V2.0.60.md)** — make Retry now reliable and queue manual refresh during automatic loading
+- **[v2.0.60 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.60.md)** — direct retry handlers and single-flight refresh recovery
+- **[v2.0.59 release notes](design/RELEASE_NOTES_V2.0.59.md)** — restore manual refresh after stalled dashboard API responses
+- **[v2.0.59 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.59.md)** — bounded requests, reliable refresh controls, and regression coverage
+- **[v2.0.58 release notes](design/RELEASE_NOTES_V2.0.58.md)** — fix Alerts mutation loop and reduce dashboard observer workload
+- **[v2.0.58 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.58.md)** — root cause, observer scope changes, and regression coverage
+- **[v2.0.57 release notes](design/RELEASE_NOTES_V2.0.57.md)** — live refresh crash prevention and dashboard rendering optimization
+- **[v2.0.57 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.57.md)** — bounded quote polling, rendering performance, and regression coverage
 - **[v2.0.56 release notes](design/RELEASE_NOTES_V2.0.56.md)** — root cause and fix for unsupported WSS protocol
 - **[v2.0.56 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.56.md)** — WebSocket-enabled libcurl and live-feed validation
+- **[v2.0.55 release notes](design/RELEASE_NOTES_V2.0.55.md)** — live-feed send reliability and actionable connection status
+- **[v2.0.55 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.55.md)** — market feed diagnostics, UI updates, and validation
 - **[v2.0.54 release notes](design/RELEASE_NOTES_V2.0.54.md)** — Upstox V3 WebSocket feed and live Overview quotes
 - **[v2.0.54 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.54.md)** — streaming architecture, security boundaries, and validation
 - **[v2.0.53 release notes](design/RELEASE_NOTES_V2.0.53.md)** — JSON view grouped under Operations and responsive dashboard optimization
@@ -38,9 +58,64 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.56
+Current release: 2.0.66
 
-Last updated: October 15, 2026
+Last updated: October 16, 2026
+
+Version 2.0.66 makes Refresh failures actionable instead of masking them with
+the same generic warning. HTTP 401/403 is identified as a rejected Upstox
+access token and instructs the user to renew it through OAuth; DNS/network
+failures advise checking connectivity. The existing view remains visible.
+Recent private dashboard logs showed both HTTP 401 responses and DNS lookup
+failures, so this release clarifies that a button retry cannot renew a rejected
+token or repair DNS. The post-login popup summarizes the change; credentials
+remain server-side.
+
+Version 2.0.65 fixes a race in manual Refresh during an initial portfolio load.
+If another request is already building the server snapshot and no prior
+snapshot or local CSV fallback exists, Refresh now waits for that request and
+reuses the newly generated snapshot instead of showing a refresh-in-progress
+failure. This coalesces duplicate requests while preserving stale/local
+fallback behavior for non-manual requests. The post-login popup summarizes the
+fix; authentication and server-side Stock API credential handling are
+unchanged.
+
+Version 2.0.64 reduces transient manual Refresh failures by retrying the
+required Upstox holdings request once on transport errors. The browser allows
+50 seconds for a dashboard API request, covering the bounded backend snapshot
+budget of up to 40 seconds for holdings, positions, and news. Optional positions
+and news failures remain isolated. The post-login popup summarizes the fix;
+authentication and server-side Stock API credential handling are unchanged.
+
+Version 2.0.63 fixes the Overview refresh action overlapping its label by
+removing the `Manual` wording and placing the button beneath the `Update`
+heading. An accessible eye control now also hides or shows Day P&L. Both
+visibility preferences are stored locally without storing financial values,
+and remain respected during live updates. Existing refresh behavior and the
+authenticated server-side Stock API boundary are unchanged. The post-login
+popup summarizes the fix.
+
+Version 2.0.62 added an accessible eye button to hide or show Market value.
+The hidden/shown preference is stored locally without storing the financial
+value. Live quote updates continue to respect the chosen visibility setting.
+Existing controls and the authenticated server-side Stock API boundary are
+unchanged. The post-login popup summarizes the UI changes.
+
+Version 2.0.61 fixes the backend cause of Refresh remaining unavailable:
+server-side snapshot requests previously could outlast the browser's timeout
+while holding the shared refresh lock through multiple upstream retries. Each
+snapshot API call now has a 10-second single-attempt bound, while the browser
+allows 35 seconds for the complete snapshot. Direct Retry handlers and queued
+manual refresh from v2.0.60 remain in place. The post-login popup summarizes
+the fix; Stock API access remains authenticated and server-side.
+
+Version 2.0.57 prevents live quote polling from creating overlapping browser
+requests when a response stalls. Requests now have a single-flight guard and
+an eight-second timeout, and are cancelled when the tab is hidden. Quote-to-
+holding lookups use a map, avoiding repeated linear searches. The release
+popup shown after login summarizes the fix. Stock API requests remain behind
+the authenticated server-side boundary; no broker credentials are sent to the
+browser.
 
 Version 2.0.56 fixes the root cause of the Overview's reconnect status:
 the system libcurl used by the prior build did not include the WSS protocol,

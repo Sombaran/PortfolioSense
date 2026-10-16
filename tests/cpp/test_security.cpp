@@ -558,6 +558,18 @@ TEST(HttpClient, RejectsNonHttpsAndUntrustedHosts) {
     EXPECT_EQ(evilHost.error, "untrusted stock API host blocked");
 }
 
+TEST(HttpClient, RejectsInvalidTimeoutAndRetryLimits) {
+    folio::HttpClient client;
+
+    const auto invalidTimeout = client.get(
+        "https://api.upstox.com/v2/portfolio/long-term-holdings", {}, 0, 1);
+    EXPECT_EQ(invalidTimeout.error, "invalid HTTP timeout or retry limit");
+
+    const auto invalidRetryLimit = client.get(
+        "https://api.upstox.com/v2/portfolio/long-term-holdings", {}, 10, 4);
+    EXPECT_EQ(invalidRetryLimit.error, "invalid HTTP timeout or retry limit");
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

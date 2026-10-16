@@ -87,7 +87,8 @@ Position parseOne(const json& j) {
 UpstoxClient::UpstoxClient(std::string accessToken, std::string baseUrl)
     : accessToken_(std::move(accessToken)), baseUrl_(std::move(baseUrl)) {}
 
-PositionsResult UpstoxClient::getPositions() const {
+PositionsResult UpstoxClient::getPositions(long timeoutSeconds,
+                                           int maxTransportAttempts) const {
     PositionsResult out;
     const std::string url = baseUrl_ + "/v2/portfolio/short-term-positions";
 
@@ -97,7 +98,8 @@ PositionsResult UpstoxClient::getPositions() const {
         {"Authorization", "Bearer " + accessToken_},
     };
 
-    const HttpResponse resp = http_.get(url, headers);
+    const HttpResponse resp = http_.get(url, headers, timeoutSeconds,
+                                        maxTransportAttempts);
     out.httpStatus = resp.statusCode;
     out.rawBody    = resp.body;
 
@@ -133,7 +135,8 @@ PositionsResult UpstoxClient::getPositions() const {
     return out;
 }
 
-PositionsResult UpstoxClient::getHoldings() const {
+PositionsResult UpstoxClient::getHoldings(long timeoutSeconds,
+                                          int maxTransportAttempts) const {
     PositionsResult out;
     const std::string url = baseUrl_ + "/v2/portfolio/long-term-holdings";
 
@@ -143,7 +146,8 @@ PositionsResult UpstoxClient::getHoldings() const {
         {"Authorization", "Bearer " + accessToken_},
     };
 
-    const HttpResponse resp = http_.get(url, headers);
+    const HttpResponse resp = http_.get(url, headers, timeoutSeconds,
+                                        maxTransportAttempts);
     out.httpStatus = resp.statusCode;
     out.rawBody    = resp.body;
 
@@ -184,7 +188,9 @@ PositionsResult UpstoxClient::getHoldings() const {
     return out;
 }
 
-NewsResult UpstoxClient::getNews(const std::string& category) const {
+NewsResult UpstoxClient::getNews(const std::string& category,
+                                 long timeoutSeconds,
+                                 int maxTransportAttempts) const {
     NewsResult out;
     // Validate category to prevent injection; support both 'holdings' and 'global' categories
     if (!security::validateNewsCategory(category)) {
@@ -199,7 +205,8 @@ NewsResult UpstoxClient::getNews(const std::string& category) const {
         {"Authorization", "Bearer " + accessToken_},
     };
 
-    const HttpResponse resp = http_.get(url, headers);
+    const HttpResponse resp = http_.get(url, headers, timeoutSeconds,
+                                        maxTransportAttempts);
     out.httpStatus = resp.statusCode;
     out.rawBody    = resp.body;
 

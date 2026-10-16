@@ -77,12 +77,16 @@ public:
     UpstoxClient(std::string accessToken,
                  std::string baseUrl = "https://api.upstox.com");
 
-    PositionsResult getPositions() const;
+    PositionsResult getPositions(long timeoutSeconds = 30,
+                                 int maxTransportAttempts = 3) const;
 
     // Fetch long-term holdings from the authenticated Upstox account.
-    PositionsResult getHoldings() const;
+    PositionsResult getHoldings(long timeoutSeconds = 30,
+                                int maxTransportAttempts = 3) const;
 
-    NewsResult getNews(const std::string& category = "holdings") const;
+    NewsResult getNews(const std::string& category = "holdings",
+                       long timeoutSeconds = 30,
+                       int maxTransportAttempts = 3) const;
 
     // Fetch the current year's market holiday calendar.
     MarketHolidaysResult getMarketHolidays() const;

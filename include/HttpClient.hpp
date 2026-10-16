@@ -24,7 +24,8 @@ public:
 
     HttpResponse get(const std::string& url,
                      const std::map<std::string, std::string>& headers,
-                     long timeoutSeconds = 30) const;
+                     long timeoutSeconds = 30,
+                     int maxTransportAttempts = 3) const;
 };
 
 // Ensures curl_global_init runs once per process.

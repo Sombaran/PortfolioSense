@@ -89,8 +89,14 @@ HttpClient::~HttpClient() = default;
 
 HttpResponse HttpClient::get(const std::string& url,
                              const std::map<std::string, std::string>& headers,
-                             long timeoutSeconds) const {
+                             long timeoutSeconds,
+                             int maxTransportAttempts) const {
     HttpResponse result;
+    if (timeoutSeconds <= 0 || maxTransportAttempts < 1 ||
+        maxTransportAttempts > 3) {
+        result.error = "invalid HTTP timeout or retry limit";
+        return result;
+    }
     const std::string lowered = [&url]() {
         std::string s = url;
         std::transform(s.begin(), s.end(), s.begin(), [](unsigned char ch) {
@@ -192,7 +198,6 @@ HttpResponse HttpClient::get(const std::string& url,
     }
 
     CURLcode rc = CURLE_OK;
-    constexpr int maxTransportAttempts = 3;
     for (int attempt = 1; attempt <= maxTransportAttempts; ++attempt) {
         result.body.clear();
         result.error.clear();
