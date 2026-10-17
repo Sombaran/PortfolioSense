@@ -559,11 +559,17 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.68" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.68"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.68"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.68" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.68`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.69" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.69"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.69"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.69" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.69`" in (root / "design" / "README.md").read_text()
+    release69 = (root / "design" / "RELEASE_NOTES_V2.0.69.md").read_text()
+    assert "HTTP 502" in release69
+    assert "login popup" in release69
+    implementation69 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.69.md").read_text()
+    assert "aria-busy" in implementation69
+    assert "HTTP 502" in implementation69
     release68 = (root / "design" / "RELEASE_NOTES_V2.0.68.md").read_text()
     assert "task-scheduler" in release68
     assert "login popup" in release68
@@ -573,9 +579,50 @@ def test_patch_release_version_is_aligned_across_build_and_readmes():
     assert "releaseNoticeV2068Addendum()" in source
     assert "Reliability and fail-closed safety · v2.0.68" in source
     assert "releaseNoticeV2067Addendum() + releaseNoticeV2068Addendum()" in source
+    assert "releaseNoticeV2068Addendum() + releaseNoticeV2069Addendum()" in source
+    assert "releaseNoticeV2069Addendum()" in source
+    assert "Dashboard reliability and API error clarity · v2.0.69" in source
     assert "releaseNoticeV2052Addendum()" in source.split("html.replace(", 1)[1].split(
         "marker);", 1
     )[0]
+
+
+def test_market_holiday_api_reports_unavailable_and_stale_data_explicitly():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    holidays = source.split("std::string WebServer::marketHolidays() const", 1)[1].split(
+        "\nstd::shared_ptr<const WebServer::Snapshot>", 1
+    )[0]
+    route = source.split('path == "/api/market-holidays"', 1)[1].split(
+        'path.rfind("/api/market-quotes?', 1
+    )[0]
+    calendar_ui = source.split("let marketHolidayData=[];", 1)[1].split(
+        "\nfunction esc", 1
+    )[0]
+
+    assert 'staleCalendar["stale"] = true' in holidays
+    assert 'throw std::runtime_error("Market holiday calendar is temporarily unavailable")' in holidays
+    assert '{"status", "error"}' in route
+    assert 'responseStatus = "502 Bad Gateway"' in route
+    assert "Holiday calendar unavailable; regular NSE hours are estimates." in calendar_ui
+    assert "payload.stale" in calendar_ui
+
+
+def test_dashboard_views_expose_loading_state_without_stale_navigation_clearing_it():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    open_tab = source.split("async function openTab", 1)[1].split("\n", 1)[0]
+    view_fetch = source.split("const getForDashboardView=get;", 1)[1].split(
+        "\nasync function safeJsonFetch", 1
+    )[0]
+
+    assert "let activeRenderId=0;" in source
+    assert "const renderId=activeRenderId,previous=cache[name],payload=await getForDashboardView(name,url)" in view_fetch
+    assert "if(cache[name]===payload)" in view_fetch
+    assert "throw Error('Dashboard view changed while data was loading')" in view_fetch
+    assert "const renderId=++activeRenderId" in open_tab
+    assert "view.setAttribute('aria-busy','true')" in open_tab
+    assert "if(renderId===activeRenderId)fail(e)" in open_tab
+    assert "if(renderId===activeRenderId)view.setAttribute('aria-busy','false')" in open_tab
+    assert "if(renderId===activeRenderId)enhanceSortableTables()" in open_tab
 
 
 def test_login_and_http_error_paths_fail_closed():

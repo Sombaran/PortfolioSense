@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.68`
+**Version:** `2.0.69`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -78,6 +78,8 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.69](RELEASE_NOTES_V2.0.69.md)** — explicit holiday API failure statuses, stale-calendar visibility, and accessible dashboard loading state
+- **[Implementation Summary v2.0.69](IMPLEMENTATION_SUMMARY_V2.0.69.md)** — remaining partial review findings completed
 - **[Release Notes v2.0.68](RELEASE_NOTES_V2.0.68.md)** — fix scheduler, HTTP, session, and fail-closed integration behavior
 - **[Implementation Summary v2.0.68](IMPLEMENTATION_SUMMARY_V2.0.68.md)** — root causes, tests, and deliberately unavailable integrations
 - **[Release Notes v2.0.67](RELEASE_NOTES_V2.0.67.md)** — remove duplicate Overview Refresh card and stabilize eye controls
@@ -171,6 +173,8 @@ The local-first design provides:
 - a clear upgrade path to a distributed worker model only when scaling and isolation become real requirements
 
 ### Release notes
+
+- `2.0.69` — Return HTTP 502 with an explicit error payload when Upstox holiday data is unavailable and there is no valid cached calendar; mark retained calendars stale and identify estimated regular hours in the market-status tooltip; expose loading state and discard stale responses/cache updates across dashboard views; preserve read-only broker access and server-side credentials; summarize the changes in the post-login popup.
 
 - `2.0.68` — Synchronize scheduler lifecycle and honor task priority; return correct 404/405/502 responses; generate session IDs from OS randomness and rate-limit invalid logins; prevent placeholder orders, 2FA, notification channels, and ML models from reporting success; fail risk simulation closed when sector exposure is unavailable; keep credentials server-side and summarize the release in the login popup.
 

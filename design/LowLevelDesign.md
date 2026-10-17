@@ -367,7 +367,12 @@ one instance across worker threads.
 
 `WebServer` binds to `127.0.0.1:8080` and serves an embedded browser UI.
 Start it with `./run.sh --web` or `./build/portfolio_health --web`.
-The UI contains Overview, News, Alerts, Positions, JSON, and Config tabs.
+The UI contains Overview, Market news, Alerts, Deeper analysis, Fundamentals,
+Operations, and Summary Dashboard tabs. Operations contains Positions, Data
+health, Configuration, JSON, and Download views. The shared dashboard view
+sets `aria-busy` while the currently selected view loads; a render sequence
+discards late API results/cache updates from older tab navigations and
+prevents them from clearing the loading state of a newer one.
 
 The server exposes these routes:
 
@@ -377,10 +382,17 @@ The server exposes these routes:
 | `/api/holdings` | Live long-term holdings JSON |
 | `/api/positions` | Live open-positions JSON |
 | `/api/news` | News filtered to symbols in `config/holding.csv` |
+| `/api/market-holidays` | Cached Upstox holiday and special-session calendar |
 | `/api/deeper-analysis` | On-demand Python/news comparison |
 | `/metrics` | Prometheus text exposition |
 
 The bearer token stays in the C++ process and is never sent to the browser.
+The holiday route returns HTTP 502 with an explicit error payload when the
+upstream calendar cannot be fetched and no validated cache exists. If a
+validated cache exists, it remains available with `stale: true` and a warning;
+the market-status tooltip identifies estimated regular NSE hours when no
+calendar can be loaded. Other route failures likewise use non-2xx statuses
+rather than success-shaped JSON error bodies.
 
 `/api/deeper-analysis` is not part of the snapshot refresh. It loads
 `config/portfolio_news.json`, fetches holdings to map instrument keys to

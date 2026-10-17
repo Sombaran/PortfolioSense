@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.68
+Version: 2.0.69
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -15,6 +15,8 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.69 release notes](design/RELEASE_NOTES_V2.0.69.md)** — explicit holiday API failure statuses, stale-calendar visibility, and accessible dashboard loading state
+- **[v2.0.69 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.69.md)** — closed the remaining partial HTTP/UI feedback gaps
 - **[v2.0.68 release notes](design/RELEASE_NOTES_V2.0.68.md)** — fix scheduler races, correct HTTP statuses, harden login sessions, and disable success-shaped stubs
 - **[v2.0.68 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.68.md)** — fail-closed safety for incomplete order, notification, and ML integrations
 - **[v2.0.67 release notes](design/RELEASE_NOTES_V2.0.67.md)** — remove the duplicate Overview Refresh card and make privacy eye controls reliable
@@ -62,9 +64,17 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.68
+Current release: 2.0.69
 
 Last updated: October 17, 2026
+
+Version 2.0.69 makes the market-holiday endpoint return HTTP 502 with an
+explicit error payload when no valid calendar cache exists. A cached calendar
+is marked stale and the status tooltip explains when regular NSE hours are
+only estimates. Dashboard views expose loading state accessibly and discard
+outdated responses without replacing newer cached data. The post-login popup summarizes
+these changes; Upstox access remains read-only with credentials kept server-side.
+See the v2.0.69 release notes and implementation summary for details.
 
 Version 2.0.68 fixes task scheduling synchronization and priority ordering,
 returns appropriate HTTP statuses for unsupported methods, missing routes,
@@ -73,8 +83,6 @@ attempts. Session IDs now use operating-system cryptographic randomness.
 Placeholder ML inference, broker order operations, and external notification
 channels no longer report fake successes; order-risk checks fail closed when
 sector exposure cannot be verified. Upstox credentials remain server-side.
-See the v2.0.68 release notes and implementation summary for details.
-
 Version 2.0.67 removes the redundant Overview Update/Refresh metric card;
 the dashboard's main Refresh control remains available. Market Value and Day
 P&L eye controls now use delegated click handling on the stable dashboard
