@@ -400,12 +400,12 @@ def test_stalled_dashboard_requests_release_manual_refresh_controls():
     assert "const payload=await safeJsonParse(response,effectiveFallback)" in safe_fetch
     assert "finally{clearTimeout(timeout)}" in safe_fetch
     assert "return openTab(activeTab,false).finally(finishRefresh)" in refresh
-    assert "function refreshControls(disabled){document.querySelectorAll('#refresh-view,.metric-refresh,[data-refresh-dashboard]')" in source
+    assert "function refreshControls(disabled){document.querySelectorAll('#refresh-view,[data-refresh-dashboard]')" in source
     assert "manualRefreshPending=true" in refresh
     assert "Refresh queued; waiting for the current request to finish..." in refresh
     assert "function finishRefresh(){refreshInFlight=false;if(manualRefreshPending){manualRefreshPending=false;refreshView();return}" in source
-    assert "button.className='metric-refresh'" in metric
-    assert "button.addEventListener('click',refreshView)" in metric
+    assert "metric-refresh" not in metric
+    assert "Refresh now" not in metric
     assert "onclick=" not in metric
     assert "view.querySelector('[data-refresh-dashboard]').addEventListener('click',refreshView)" in failure
     assert "data-refresh-dashboard" in failure
@@ -427,10 +427,12 @@ def test_overview_refresh_label_and_market_value_visibility_control():
         "const char* releaseNoticeV2036Addendum()", 1
     )[0]
 
-    assert '<span class="label">Update</span>' in overview
-    assert "Manual update" not in overview
-    assert ".metric-refresh{display:block;margin-top:8px" in optimization
+    assert '<span class="label">Update</span>' not in overview
+    assert "Refresh now" not in overview
+    assert ".metric-refresh{display:block;margin-top:8px" not in optimization
+    assert 'id="refresh-view"' in source
     assert 'class="market-value-toggle" type="button"' in overview
+    assert 'data-visibility-toggle="market-value"' in overview
     assert 'aria-label="Hide market value"' in overview
     assert 'data-visibility-toggle="day-pnl"' in overview
     assert 'aria-label="Hide Day P&amp;L"' in overview
@@ -439,12 +441,19 @@ def test_overview_refresh_label_and_market_value_visibility_control():
     assert "baran-capital-view-hide-market-value" in source
     assert "baran-capital-view-hide-day-pnl" in source
     assert "amount.textContent!==text" in visibility
-    assert "setMetricVisibility('day-pnl',!dayPnlHidden,true)" in visibility
-    assert "setMetricVisibility('market-value',!marketValueHidden,true)" in visibility
+    assert "setMetricVisibility('day-pnl',dayPnlHidden)" in visibility
+    assert "setMetricVisibility('market-value',marketValueHidden)" in visibility
     assert "setMarketValueText('INR '+value.toLocaleString" in source
     assert "setDayPnlText(dayPnl.toLocaleString" in source
     assert "metric?.querySelector('.market-value-amount')" in optimization
     assert "setMarketValueText(unavailable)" in optimization
+    assert "view.addEventListener('click',event=>{const toggle=event.target.closest('[data-visibility-toggle]')" in source
+    assert "document.addEventListener('click',event=>{const symbol=event.target.closest('.holding-symbol')" in source
+    assert "toggle.dataset.visibilityToggle" in source
+    assert "setMetricVisibility(metric,!marketValueHidden,true)" in source
+    assert "setMetricVisibility(metric,!dayPnlHidden,true)" in source
+    assert "button.dataset.hidden=String(hidden)" in visibility
+    assert "button.dataset.ready" not in visibility
 
 
 def test_query_routes_preserve_parameters_and_fundamentals_popup_wraps():
@@ -537,7 +546,7 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
     assert "const originalFail=fail" in optimization
     assert "Renew UPSTOX_ACCESS_TOKEN and restart the dashboard." in optimization
     assert "window.summaryDashboard=async function()" in optimization
-    assert ".metric-refresh:disabled" in optimization
+    assert ".metric-refresh" not in optimization
     assert "function refreshControls(disabled)" in source
     assert "button.textContent=button.id==='refresh-view'?'Refresh'" in source
     assert "Reliable refresh and token guidance · v2.0.51" in release
@@ -550,11 +559,58 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.66" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.66"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.66"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.66" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.66`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.68" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.68"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.68"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.68" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.68`" in (root / "design" / "README.md").read_text()
+    release68 = (root / "design" / "RELEASE_NOTES_V2.0.68.md").read_text()
+    assert "task-scheduler" in release68
+    assert "login popup" in release68
+    implementation68 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.68.md").read_text()
+    assert "cryptographic randomness" in implementation68
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2068Addendum()" in source
+    assert "Reliability and fail-closed safety · v2.0.68" in source
+    assert "releaseNoticeV2067Addendum() + releaseNoticeV2068Addendum()" in source
+    assert "releaseNoticeV2052Addendum()" in source.split("html.replace(", 1)[1].split(
+        "marker);", 1
+    )[0]
+
+
+def test_login_and_http_error_paths_fail_closed():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+
+    assert "security::generateRandomString(32)" in source
+    assert "if (session.empty())" in source
+    assert "loginFailures_.size() >= 5" in source
+    assert "429 Too Many Requests" in source
+    assert "Retry-After: 60\\r\\n" in source
+    assert '"404 Not Found"' in source
+    assert '"405 Method Not Allowed"' in source
+    assert '"502 Bad Gateway"' in source
+    assert '"500 Internal Server Error"' in source
+    assert "Allow: GET\\r\\n" in source
+
+
+def test_unimplemented_integrations_do_not_claim_success():
+    root = Path(__file__).parents[2]
+    orders = (root / "src" / "OrdersAPI.cpp").read_text()
+    notifications = (root / "src" / "NotificationService.cpp").read_text()
+    models = (root / "src" / "MLModels.cpp").read_text()
+
+    assert "Live order submission is not implemented; no order was sent." in orders
+    assert "return false;" in orders
+    assert "No configured notification channel" in notifications
+    assert "return false;" in models
+    release67 = (root / "design" / "RELEASE_NOTES_V2.0.67.md").read_text()
+    assert "Removed the extra Overview Update/Refresh metric card" in release67
+    assert "login popup" in release67
+    implementation67 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.67.md").read_text()
+    assert "event delegation" in implementation67
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "releaseNoticeV2067Addendum()" in source
+    assert "Overview controls · v2.0.67" in source
     release66 = (root / "design" / "RELEASE_NOTES_V2.0.66.md").read_text()
     assert "HTTP 401" in release66
     assert "login popup" in release66
@@ -706,7 +762,7 @@ def test_authenticated_requests_renew_the_sliding_session_cookie():
     assert "it = sessions_.erase(it)" in new_session
     assert "Max-Age=3600; HttpOnly; SameSite=Strict; Path=/" in source
     assert "extraHeaders" in response
-    assert 'response(body, "application/json", sessionCookie)' in source
+    assert "responseStatus, body, \"application/json\", allowHeader + sessionCookie" in source
     assert 'path == "/api/session"' in source
     assert "json({{\"status\", \"ready\"}})" in source
     assert "setInterval(()=>{if(document.visibilityState==='visible')fetch('/api/session',{cache:'no-store'})" in source

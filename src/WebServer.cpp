@@ -25,7 +25,6 @@
 #include <sstream>
 #include <string>
 #include <stdexcept>
-#include <random>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -353,7 +352,7 @@ const char* dashboardResponsiveLayout() {
 }
 
 const char* dashboardPageOptimization() {
-    return R"JS(<script>(function(){const style=document.createElement('style');        style.textContent='#view .panel,#view .metric,#view .story{content-visibility:auto;contain-intrinsic-size:auto 220px}.metric-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.market-value-toggle{display:grid;place-items:center;width:30px;height:30px;padding:4px;border:1px solid var(--line);border-radius:3px;background:var(--panel);color:var(--muted);cursor:pointer}.market-value-toggle:hover{color:var(--teal);border-color:var(--teal)}.market-value-toggle:focus-visible{outline:2px solid var(--orange);outline-offset:2px}.metric-refresh{display:block;margin-top:8px;padding:7px 10px;border:1px solid var(--teal);border-radius:3px;background:var(--teal);color:#fff;cursor:pointer;font:700 12px Arial,sans-serif}.metric-refresh:hover{filter:brightness(.92)}.metric-refresh:disabled{opacity:.65;cursor:wait}.metric-refresh:focus-visible{outline:2px solid var(--orange);outline-offset:2px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}';document.head.appendChild(style);const originalNormalize=normalizeRefreshMetric;normalizeRefreshMetric=function(){originalNormalize();if(activeTab!=='overview')return;const metric=[...view.querySelectorAll('.metric')].find(item=>item.querySelector('.label')?.textContent==='Market value');const value=metric?.querySelector('.market-value-amount');if(!value||cache.holdings?.source==='upstox-live')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));const unavailable=tokenExpired?'Unavailable · renew token':'Unavailable · live data offline';setMarketValueText(unavailable)};const originalFail=fail;fail=function(error){const warning=String(cache.holdings?.warning||'');if(/token.{0,30}(expired|unauthorized)|401|403/i.test(warning)&&!/token|401|403|unauthorized|forbidden/i.test(String(error?.message||error)))error=new Error('Upstox access token expired or unauthorized. Renew UPSTOX_ACCESS_TOKEN and restart the dashboard.');originalFail(error)};const originalSummary=window.summaryDashboard;if(originalSummary)window.summaryDashboard=async function(){await originalSummary();if(activeTab!=='summary')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));if(tokenExpired)return;view.querySelectorAll('.metric b').forEach(value=>{if(value.textContent.trim()==='Unavailable · renew token')value.textContent='Unavailable · live data offline'});view.querySelectorAll('td').forEach(cell=>{if(cell.textContent.includes('Renew the access token to restore live valuation.'))cell.textContent='Reconnect to restore live valuation.'})}})()</script>)JS";
+    return R"JS(<script>(function(){const style=document.createElement('style');        style.textContent='#view .panel,#view .metric,#view .story{content-visibility:auto;contain-intrinsic-size:auto 220px}.metric-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.market-value-toggle{display:grid;place-items:center;width:30px;height:30px;padding:4px;border:1px solid var(--line);border-radius:3px;background:var(--panel);color:var(--muted);cursor:pointer}.market-value-toggle:hover{color:var(--teal);border-color:var(--teal)}.market-value-toggle:focus-visible{outline:2px solid var(--orange);outline-offset:2px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}';document.head.appendChild(style);const originalNormalize=normalizeRefreshMetric;normalizeRefreshMetric=function(){originalNormalize();if(activeTab!=='overview')return;const metric=[...view.querySelectorAll('.metric')].find(item=>item.querySelector('.label')?.textContent==='Market value');const value=metric?.querySelector('.market-value-amount');if(!value||cache.holdings?.source==='upstox-live')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));const unavailable=tokenExpired?'Unavailable · renew token':'Unavailable · live data offline';setMarketValueText(unavailable)};const originalFail=fail;fail=function(error){const warning=String(cache.holdings?.warning||'');if(/token.{0,30}(expired|unauthorized)|401|403/i.test(warning)&&!/token|401|403|unauthorized|forbidden/i.test(String(error?.message||error)))error=new Error('Upstox access token expired or unauthorized. Renew UPSTOX_ACCESS_TOKEN and restart the dashboard.');originalFail(error)};const originalSummary=window.summaryDashboard;if(originalSummary)window.summaryDashboard=async function(){await originalSummary();if(activeTab!=='summary')return;const tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||''));if(tokenExpired)return;view.querySelectorAll('.metric b').forEach(value=>{if(value.textContent.trim()==='Unavailable · renew token')value.textContent='Unavailable · live data offline'});view.querySelectorAll('td').forEach(cell=>{if(cell.textContent.includes('Renew the access token to restore live valuation.'))cell.textContent='Reconnect to restore live valuation.'})}})()</script>)JS";
 }
 
 const char* releaseNoticeV2036Addendum() {
@@ -472,8 +471,16 @@ const char* releaseNoticeV2066Addendum() {
     return R"JS(<script>const releaseBox2066=document.querySelector('[role="dialog"]');if(releaseBox2066){releaseBox2066.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Refresh diagnostics · v2.0.66</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Refresh failures now show a safe, actionable cause instead of hiding it behind the generic warning. HTTP 401/403 points to renewing the Upstox access token through OAuth; DNS/network errors prompt a connectivity check. Existing dashboard data is retained, and credentials remain server-side.</p>')}</script>)JS";
 }
 
+const char* releaseNoticeV2067Addendum() {
+    return R"JS(<script>const releaseBox2067=document.querySelector('[role="dialog"]');if(releaseBox2067){releaseBox2067.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Overview controls · v2.0.67</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Removed the duplicate Overview Update/Refresh card; the main Refresh control remains available. Market Value and Day P&amp;L eye controls now use delegated click handling, so they continue working after Overview rerenders and preserve the selected hidden/shown preference.</p>')}</script>)JS";
+}
+
+const char* releaseNoticeV2068Addendum() {
+    return R"JS(<script>const releaseBox2068=document.querySelector('[role="dialog"]');if(releaseBox2068){releaseBox2068.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Reliability and fail-closed safety · v2.0.68</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed task scheduling races and priority ordering, returned real HTTP error statuses, strengthened local login throttling and session IDs, and disabled placeholder model/order/notification operations that previously implied success. Risk checks now fail closed when required exposure data is missing. The dashboard and Stock API credentials remain server-side.</p>')}</script>)JS";
+}
+
 std::string releaseNoticeV2052Addendum() {
-    return std::string(R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS") + releaseNoticeV2053Addendum() + releaseNoticeV2054Addendum() + releaseNoticeV2055Addendum() + releaseNoticeV2056Addendum() + releaseNoticeV2057Addendum() + releaseNoticeV2058Addendum() + releaseNoticeV2059Addendum() + releaseNoticeV2060Addendum() + releaseNoticeV2061Addendum() + releaseNoticeV2062Addendum() + releaseNoticeV2063Addendum() + releaseNoticeV2064Addendum() + releaseNoticeV2065Addendum() + releaseNoticeV2066Addendum();
+    return std::string(R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS") + releaseNoticeV2053Addendum() + releaseNoticeV2054Addendum() + releaseNoticeV2055Addendum() + releaseNoticeV2056Addendum() + releaseNoticeV2057Addendum() + releaseNoticeV2058Addendum() + releaseNoticeV2059Addendum() + releaseNoticeV2060Addendum() + releaseNoticeV2061Addendum() + releaseNoticeV2062Addendum() + releaseNoticeV2063Addendum() + releaseNoticeV2064Addendum() + releaseNoticeV2065Addendum() + releaseNoticeV2066Addendum() + releaseNoticeV2067Addendum() + releaseNoticeV2068Addendum();
 }
 
 const char* dashboardSessionRecovery() {
@@ -682,7 +689,7 @@ document.head.insertAdjacentHTML('beforeend','<style>.metric-stock-list{position
 function numberField(item,keys){for(const key of keys){const value=Number(item[key]);if(Number.isFinite(value))return value}return 0}
 function holdingValue(item){const reported=numberField(item,['current_value','market_value','value']);if(reported)return reported;return numberField(item,['last_price'])*numberField(item,['quantity'])*Math.max(1,numberField(item,['multiplier'])||1)}
 function stockCount(items){return new Set(items.map(item=>(item.trading_symbol||item.tradingsymbol||'').trim()).filter(Boolean)).size}
-function refreshControls(disabled){document.querySelectorAll('#refresh-view,.metric-refresh,[data-refresh-dashboard]').forEach(button=>{button.disabled=disabled;if(disabled)button.textContent='Refreshing...';else button.textContent=button.id==='refresh-view'?'Refresh':button.dataset.refreshDashboard!==undefined?'Retry now':'Refresh now'})}
+function refreshControls(disabled){document.querySelectorAll('#refresh-view,[data-refresh-dashboard]').forEach(button=>{button.disabled=disabled;if(disabled)button.textContent='Refreshing...';else button.textContent=button.id==='refresh-view'?'Refresh':'Retry now'})}
 function finishRefresh(){refreshInFlight=false;if(manualRefreshPending){manualRefreshPending=false;refreshView();return}manualRefreshRequested=false;refreshControls(false)}
 function refreshView(){if(refreshInFlight){manualRefreshPending=true;refreshControls(true);status.textContent='Refresh queued; waiting for the current request to finish...';return Promise.resolve()}cache={};apiRetryAt={};apiRetryMessages={};manualRefreshRequested=true;refreshInFlight=true;refreshControls(true);status.textContent='Refreshing current view...';return openTab(activeTab,false).finally(finishRefresh)}
 const baseSafeJsonFetch=safeJsonFetch;safeJsonFetch=async function(url,fallback){if(!String(url).includes('/api/deeper-analysis'))return baseSafeJsonFetch(url,fallback);let result;for(let attempt=0;attempt<3;attempt++){result=await baseSafeJsonFetch(url,fallback);if(result.status!=='error'||attempt===2)return result;status.textContent='Deeper analysis reconnecting...';await new Promise(resolve=>setTimeout(resolve,750*(attempt+1)))}return result}
@@ -738,11 +745,11 @@ async function holdings(){
         sum+Number(item.day_change||0)*Number(item.quantity||0),0);
     view.innerHTML=warning+newsWarning+
         '<div class="grid"><div class="metric"><span class="label">Holdings</span><b>'+
-        data.length+'</b></div><div class="metric"><div class="metric-heading"><span class="label">Market value</span><button class="market-value-toggle" type="button" aria-label="Hide market value" title="Hide market value" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><b class="market-value-amount">INR '+
+        data.length+'</b></div><div class="metric"><div class="metric-heading"><span class="label">Market value</span><button class="market-value-toggle" type="button" data-visibility-toggle="market-value" aria-label="Hide market value" title="Hide market value" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><b class="market-value-amount">INR '+
         value.toLocaleString('en-IN',{maximumFractionDigits:0})+
         '</b></div><div class="metric"><div class="metric-heading"><span class="label">Day P&amp;L</span><button class="market-value-toggle" type="button" data-visibility-toggle="day-pnl" aria-label="Hide Day P&amp;L" title="Hide Day P&amp;L" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><b class="day-pnl-amount">'+
         dayPnl.toLocaleString('en-IN',{maximumFractionDigits:0})+
-        '</b></div><div class="metric"><span class="label">Update</span><b>30 sec</b></div></div>'+
+        '</b></div></div>'+
         '<div class="panel"><h2>Long-term holdings</h2>'+
         '<label class="label">Confidence order <select onchange="changeConfidenceOrder(this.value)">'+
         '<option value="desc"'+(confidenceOrder==='desc'?' selected':'')+
@@ -762,13 +769,13 @@ async function deeperAnalysis(){const p=await safeJsonFetch('/api/deeper-analysi
 async function openTab(tab,showLoading=true){activeTab=tab;document.querySelectorAll('.tab').forEach(x=>{const active=x.dataset.tab===tab;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active))});document.querySelector('#view-filter').value='';if(showLoading)view.innerHTML='<div class="panel loading">Loading '+tab+'...</div>';try{if(tab==='overview')await holdings();else if(tab==='news')await news();else if(tab==='alerts')await alerts();else if(tab==='deeper-analysis')await deeperAnalysis();else if(tab==='fundamentals')await fundamentals();else if(tab==='positions')await raw('positions','/api/positions','Open positions');else if(tab==='json')await raw('holdings','/api/holdings','Holdings JSON');else if(tab==='health')await health();else await config()}catch(e){fail(e)}enhanceSortableTables()}
 function addSerialNumbers(){const table=document.querySelector('.table');if(!table||!table.querySelector('.holding-symbol'))return;const head=table.rows[0];if(['#','S.No'].includes(head.cells[0]?.textContent.trim()))return;const header=document.createElement('th');header.textContent='S.No';head.insertBefore(header,head.firstChild);[...table.rows].slice(1).forEach((row,index)=>{const cell=document.createElement('td');cell.textContent=String(index+1);row.insertBefore(cell,row.firstChild)})}
 function setMetricValueText(metric,value){const amount=view.querySelector('.'+metric+'-amount');if(!amount)return;amount.dataset.visibleValue=value;const hidden=metric==='market-value'?marketValueHidden:dayPnlHidden,text=hidden?'••••••':value;if(amount.textContent!==text)amount.textContent=text}
-function setMetricVisibility(metric,hidden,persist=false){const isMarketValue=metric==='market-value',current=isMarketValue?marketValueHidden:dayPnlHidden,storageKey=isMarketValue?'baran-capital-view-hide-market-value':'baran-capital-view-hide-day-pnl',label=isMarketValue?'Market value':'Day P&L';if(persist&&current!==hidden)try{localStorage.setItem(storageKey,String(hidden))}catch(error){console.warn('Unable to save '+label+' visibility preference',error)}if(isMarketValue)marketValueHidden=hidden;else dayPnlHidden=hidden;const amount=view.querySelector('.'+metric+'-amount'),button=view.querySelector('[data-visibility-toggle="'+metric+'"]');if(amount){const text=hidden?'••••••':amount.dataset.visibleValue||amount.textContent;if(amount.textContent!==text)amount.textContent=text}if(button&&button.dataset.hidden!==String(hidden)){button.dataset.hidden=String(hidden);button.setAttribute('aria-label',(hidden?'Show ':'Hide ')+label);button.setAttribute('title',(hidden?'Show ':'Hide ')+label);button.setAttribute('aria-pressed',String(hidden));button.innerHTML=hidden?'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.2 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.5 10.5 0 0 0 3-.4"/></svg>':'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'}}
+function setMetricVisibility(metric,hidden,persist=false){const isMarketValue=metric==='market-value',current=isMarketValue?marketValueHidden:dayPnlHidden,storageKey=isMarketValue?'baran-capital-view-hide-market-value':'baran-capital-view-hide-day-pnl',label=isMarketValue?'Market value':'Day P&L';if(persist&&current!==hidden)try{localStorage.setItem(storageKey,String(hidden))}catch(error){console.warn('Unable to save '+label+' visibility preference',error)}if(isMarketValue)marketValueHidden=hidden;else dayPnlHidden=hidden;const amount=view.querySelector('.'+metric+'-amount'),button=view.querySelector('[data-visibility-toggle="'+metric+'"]');if(amount){if(!amount.dataset.visibleValue)amount.dataset.visibleValue=amount.textContent;const text=hidden?'••••••':amount.dataset.visibleValue;if(amount.textContent!==text)amount.textContent=text}if(button){button.dataset.hidden=String(hidden);button.setAttribute('aria-label',(hidden?'Show ':'Hide ')+label);button.setAttribute('title',(hidden?'Show ':'Hide ')+label);button.setAttribute('aria-pressed',String(hidden));button.innerHTML=hidden?'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.2 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.5 10.5 0 0 0 3-.4"/></svg>':'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'}}
 function setMarketValueText(value){setMetricValueText('market-value',value)}
 function setDayPnlText(value){setMetricValueText('day-pnl',value)}
-function normalizeRefreshMetric(){if(activeTab!=='overview')return;const metrics=[...view.querySelectorAll('.metric')],data=cache.holdings?.data||[],refresh=metrics.find(item=>item.querySelector('.label')?.textContent==='Update'),marketValue=metrics.find(item=>item.querySelector('.label')?.textContent==='Market value'),dayPnl=metrics.find(item=>item.querySelector('.label')?.textContent==='Day P&L');if(metrics[0]?.querySelector('.label')){const label=metrics[0].querySelector('.label'),value=String(stockCount(data));if(label.textContent!=='Stocks')label.textContent='Stocks';if(metrics[0].querySelector('b').textContent!==value)metrics[0].querySelector('b').textContent=value}if(marketValue){const live=cache.holdings?.source==='upstox-live',tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||'')),value=live?'INR '+data.reduce((total,item)=>total+holdingValue(item),0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):tokenExpired?'Unavailable · renew token':'Unavailable · live data offline';setMarketValueText(value);const toggle=marketValue.querySelector('[data-visibility-toggle="market-value"]');if(toggle&&!toggle.dataset.ready){toggle.dataset.ready='1';toggle.addEventListener('click',()=>setMetricVisibility('market-value',!marketValueHidden,true))}setMetricVisibility('market-value',marketValueHidden)}if(dayPnl){const amount=dayPnl.querySelector('.day-pnl-amount');if(amount&&!amount.dataset.visibleValue)amount.dataset.visibleValue=amount.textContent;const toggle=dayPnl.querySelector('[data-visibility-toggle="day-pnl"]');if(toggle&&!toggle.dataset.ready){toggle.dataset.ready='1';toggle.addEventListener('click',()=>setMetricVisibility('day-pnl',!dayPnlHidden,true))}setMetricVisibility('day-pnl',dayPnlHidden)}if(refresh&&!refresh.dataset.ready){refresh.dataset.ready='1';const value=refresh.querySelector('b'),button=document.createElement('button');button.type='button';button.className='metric-refresh';button.textContent='Refresh now';button.addEventListener('click',refreshView);value.replaceWith(button)}}
+function normalizeRefreshMetric(){if(activeTab!=='overview')return;const metrics=[...view.querySelectorAll('.metric')],data=cache.holdings?.data||[],marketValue=metrics.find(item=>item.querySelector('.label')?.textContent==='Market value'),dayPnl=metrics.find(item=>item.querySelector('.label')?.textContent==='Day P&L');if(metrics[0]?.querySelector('.label')){const label=metrics[0].querySelector('.label'),value=String(stockCount(data));if(label.textContent!=='Stocks')label.textContent='Stocks';if(metrics[0].querySelector('b').textContent!==value)metrics[0].querySelector('b').textContent=value}if(marketValue){const live=cache.holdings?.source==='upstox-live',tokenExpired=/token.{0,30}(expired|unauthorized)|401|403/i.test(String(cache.holdings?.warning||'')),value=live?'INR '+data.reduce((total,item)=>total+holdingValue(item),0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):tokenExpired?'Unavailable · renew token':'Unavailable · live data offline';setMarketValueText(value);setMetricVisibility('market-value',marketValueHidden)}if(dayPnl){const amount=dayPnl.querySelector('.day-pnl-amount');if(amount&&!amount.dataset.visibleValue)amount.dataset.visibleValue=amount.textContent;setMetricVisibility('day-pnl',dayPnlHidden)}}
 function normalizeDeeperAnalysis(){if(activeTab!=='deeper-analysis')return;const loading=view.querySelector('.loading');if(loading&&!loading.querySelector('.deep-spinner'))loading.innerHTML='<span class="deep-spinner" aria-hidden="true"></span><b>Analysis in progress</b><span>Comparing saved and fresh sentiment data...</span>';const table=[...view.querySelectorAll('.table')].find(item=>item.textContent.includes('Saved news')&&item.textContent.includes('Python news'));if(!table||['#','S.No'].includes(table.rows[0].cells[0]?.textContent.trim()))return;const header=document.createElement('th');header.textContent='S.No';table.rows[0].insertBefore(header,table.rows[0].firstChild);[...table.rows].slice(1).forEach((row,index)=>{const cell=document.createElement('td');cell.className='analysis-number';cell.textContent=String(index+1);row.insertBefore(cell,row.firstChild)})}
 function normalizeAlertsTable(){const table=[...view.querySelectorAll('.table')].find(item=>item.rows[0]?.cells[0]?.textContent==='Stock'&&item.rows[0]?.cells[1]?.textContent==='Company');if(!table||table.dataset.stockRemoved)return;[...table.rows].forEach(row=>row.deleteCell(0));table.dataset.stockRemoved='1'}
-function addWorkflowReference(){if(activeTab!=='deeper-analysis'||document.querySelector('.workflow-reference'))return;const legacy=[...view.querySelectorAll('h2')].find(item=>item.textContent==='How this ties to NLP sentiment');if(legacy)legacy.parentElement.remove();const panel=document.createElement('section');panel.className='workflow-reference';panel.innerHTML='<div class="workflow-kicker">Sombaran portfolio intelligence</div><h2>From market data to a decision</h2><ol><li><b>Use Upstox Market Data API</b><span>Live quotes and historical candles provide the market context.</span></li><li><b>Feed data into the analytics engine</b><span>C++ and Python process technical indicators and ML signals.</span></li><li><b>Generate buy, sell, or hold signals</b><span>Sentiment and portfolio data become reviewable actions.</span></li><li><b>Automate execution safely</b><span>Orders API integration belongs behind explicit risk controls.</span></li><li><b>Monitor portfolio health</b><span>Holdings API keeps ownership and exposure visible.</span></li><li><b>Visualize results with alerts</b><span>Dashboards and alerts make changes easy to spot.</span></li></ol></section>';view.prepend(panel)}
+function addWorkflowReference(){if(activeTab!=='deeper-analysis'||document.querySelector('.workflow-reference'))return;const legacy=[...view.querySelectorAll('h2')].find(item=>item.textContent==='How this ties to NLP sentiment');if(legacy)legacy.parentElement.remove();const panel=document.createElement('section');panel.className='workflow-reference';panel.innerHTML='<div class="workflow-kicker">Sombaran portfolio intelligence</div><h2>From market data to a decision</h2><ol><li><b>Use Upstox market data</b><span>Live quotes and saved portfolio/news data provide context; historical candle series are not currently fetched.</span></li><li><b>Review analytics</b><span>C++ indicators and Python news analysis support an advisory view; model inference is currently unavailable.</span></li><li><b>Review the generated signal</b><span>Sentiment and portfolio data provide a decision aid, not a prediction or investment instruction.</span></li><li><b>Execution is unavailable</b><span>This build does not submit or cancel broker orders; order simulation fails closed where exposure checks are unavailable.</span></li><li><b>Monitor portfolio health</b><span>Authenticated holdings and positions remain read-only.</span></li><li><b>Review alerts</b><span>Dashboard and metrics data provide visibility; external notification integrations are not active.</span></li></ol></section>';view.prepend(panel)}
 document.head.insertAdjacentHTML('beforeend','<style>.market-status:hover::before,.market-status:focus-visible::before{display:none!important}.market-status:hover::after,.market-status:focus-visible::after{content:"Market hours: " attr(data-market-message);white-space:nowrap}</style>');
 function articleList(items){return (items||[]).map(x=>'<li><a href="'+esc(x.article_link||x.url||'#')+'" target="_blank" rel="noopener">'+esc(x.heading||x.title||'Untitled article')+'</a><small>'+esc(x.summary||x.description||'')+'</small></li>').join('')||'<li>No articles returned.</li>'}
 async function showStockAnalysis(symbol){const existing=document.querySelector('.stock-detail');if(existing)existing.remove();view.insertAdjacentHTML('beforeend','<div class="panel stock-detail"><h2>'+esc(symbol)+'</h2><p class="loading">Loading news and fundamentals...</p></div>');try{const data=await safeJsonFetch('/api/stock-analysis?symbol='+encodeURIComponent(symbol),{status:'error',error:'Stock analysis is unavailable right now.'});if(activeTab!=='overview')return;if(data.status==='running'){setTimeout(()=>{if(activeTab==='overview')showStockAnalysis(symbol)},1000);return}if(data.error)throw Error(data.error);const detail=document.querySelector('.stock-detail');if(!detail)return;const ratios=(data.key_ratios||[]).map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.company_value)+'</td><td>'+esc(x.sector_value)+'</td></tr>').join('');const profile=data.company_profile||{};detail.innerHTML='<h2>'+esc(data.symbol)+' <span class="decision">'+esc(data.action)+'</span></h2><p>'+esc(data.comparison)+'</p><div class="panel"><span class="label">Fundamentals · '+esc(data.fundamentals_signal)+'</span><p>'+esc(data.fundamentals_summary)+(profile.sector?' Sector: '+esc(profile.sector)+'.':'')+'</p><div class="table-wrap"><table class="table"><tr><th>Ratio</th><th>Company</th><th>Sector</th></tr>'+ratios+'</table></div></div><div class="news"><div><span class="label">Upstox news · '+esc(data.upstox_signal)+'</span><ul class="source-list">'+articleList(data.upstox_news)+'</ul></div><div><span class="label">News-config news · '+esc(data.news_config_recommendation)+'</span><ul class="source-list">'+articleList(data.news_config_news)+'</ul></div></div>'}catch(error){const detail=document.querySelector('.stock-detail');if(detail)detail.innerHTML='<h2>'+esc(symbol)+'</h2><p class="error">Unable to complete stock analysis: '+esc(error.message)+'</p>'}}
@@ -790,7 +797,7 @@ document.addEventListener('mouseout',event=>{const target=event.target.closest('
 new MutationObserver(()=>{document.querySelectorAll('.fundamental-open').forEach(button=>button.parentElement.remove());const table=document.querySelector('.fundamental-stock')?.closest('table');if(table&&table.rows[0]?.lastElementChild?.textContent==='Open')table.rows[0].lastElementChild.remove()}).observe(view,{childList:true});
 new MutationObserver(addWorkflowReference).observe(view,{childList:true});new MutationObserver(addRsiTool).observe(view,{childList:true});new MutationObserver(normalizeAlertsTable).observe(view,{childList:true});
 setInterval(()=>{if(window.__fundamentalCache)Object.keys(window.__fundamentalCache).forEach(symbol=>{if(window.__fundamentalCache[symbol]?.status==='running')delete window.__fundamentalCache[symbol]})},900);
-document.addEventListener('click',event=>{const symbol=event.target.closest('.holding-symbol');if(symbol)showStockAnalysis(symbol.textContent.trim())});new MutationObserver(()=>{addSerialNumbers();normalizeRefreshMetric();normalizeDeeperAnalysis()}).observe(view,{childList:true});document.querySelectorAll('.tab').forEach(x=>{x.onclick=()=>openTab(x.dataset.tab);x.onkeydown=event=>{if(!['ArrowRight','ArrowLeft'].includes(event.key))return;event.preventDefault();const tabs=[...document.querySelectorAll('.tab')],index=tabs.indexOf(x),next=tabs[(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();openTab(next.dataset.tab)}});document.querySelector('#view-filter').oninput=event=>filterView(event.target.value);document.querySelector('#refresh-view').onclick=refreshView;document.querySelector('#pause-refresh').onclick=toggleUpdates;updateMarketStatus();loadMarketHolidays();refreshInFlight=true;openTab('overview').then(sortOverviewRows).finally(finishRefresh);
+view.addEventListener('click',event=>{const toggle=event.target.closest('[data-visibility-toggle]');if(!toggle||toggle.disabled)return;const metric=toggle.dataset.visibilityToggle;if(metric==='market-value')setMetricVisibility(metric,!marketValueHidden,true);else if(metric==='day-pnl')setMetricVisibility(metric,!dayPnlHidden,true)});document.addEventListener('click',event=>{const symbol=event.target.closest('.holding-symbol');if(symbol)showStockAnalysis(symbol.textContent.trim())});new MutationObserver(()=>{addSerialNumbers();normalizeRefreshMetric();normalizeDeeperAnalysis()}).observe(view,{childList:true});document.querySelectorAll('.tab').forEach(x=>{x.onclick=()=>openTab(x.dataset.tab);x.onkeydown=event=>{if(!['ArrowRight','ArrowLeft'].includes(event.key))return;event.preventDefault();const tabs=[...document.querySelectorAll('.tab')],index=tabs.indexOf(x),next=tabs[(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();openTab(next.dataset.tab)}});document.querySelector('#view-filter').oninput=event=>filterView(event.target.value);document.querySelector('#refresh-view').onclick=refreshView;document.querySelector('#pause-refresh').onclick=toggleUpdates;updateMarketStatus();loadMarketHolidays();refreshInFlight=true;openTab('overview').then(sortOverviewRows).finally(finishRefresh);
 let lastVisibleAt=Date.now();
 function recoverAfterWake(){const now=Date.now();if(now-lastVisibleAt<5000)return;lastVisibleAt=now;if(updatesPaused||refreshInFlight)return;cache={};apiRetryAt={};apiRetryMessages={};refreshInFlight=true;openTab(activeTab,true).finally(finishRefresh)}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')recoverAfterWake()});
@@ -1744,11 +1751,10 @@ bool WebServer::authenticated(const std::string& request) const {
 }
 
 std::string WebServer::newSession() {
-    std::random_device device;
-    std::mt19937_64 generator(device());
-    std::uniform_int_distribution<unsigned long long> distribution;
-    const std::string session = std::to_string(distribution(generator)) +
-                                std::to_string(distribution(generator));
+    const std::string session = security::generateRandomString(32);
+    if (session.empty()) {
+        throw std::runtime_error("cryptographic session ID generation failed");
+    }
     std::lock_guard<std::mutex> lock(sessionMutex_);
     const auto now = std::chrono::steady_clock::now();
     for (auto it = sessions_.begin(); it != sessions_.end();) {
@@ -1757,6 +1763,23 @@ std::string WebServer::newSession() {
     }
     sessions_[session] = now + std::chrono::hours(1);
     return session;
+}
+
+bool WebServer::recordLoginFailure() {
+    std::lock_guard<std::mutex> lock(loginAttemptMutex_);
+    const auto now = std::chrono::steady_clock::now();
+    while (!loginFailures_.empty() &&
+           now - loginFailures_.front() >= std::chrono::minutes(1)) {
+        loginFailures_.pop_front();
+    }
+    if (loginFailures_.size() >= 5) return false;
+    loginFailures_.push_back(now);
+    return true;
+}
+
+void WebServer::clearLoginFailures() {
+    std::lock_guard<std::mutex> lock(loginAttemptMutex_);
+    loginFailures_.clear();
 }
 
 void WebServer::removeSession(const std::string& request) {
@@ -2046,6 +2069,7 @@ int WebServer::run() {
         const std::string requestBody = bodyStart == std::string::npos
             ? std::string{} : requestText.substr(bodyStart + 4);
         std::string body;
+        std::string responseStatus = "200 OK";
         try {
             if (path == "/login") {
                 const std::string html = loginPage();
@@ -2053,15 +2077,30 @@ int WebServer::run() {
                     "200 OK", html, "text/html");
                 sendAll(connection, output);
                 close(connection); continue;
-            } else if (path == "/api/login" && method == "POST") {
+            } else if (path == "/api/login") {
+                if (method != "POST") {
+                    const std::string output = responseWithStatus(
+                        "405 Method Not Allowed", "{\"error\":\"POST required\"}",
+                        "application/json", "Allow: POST\r\n");
+                    sendAll(connection, output);
+                    close(connection); continue;
+                }
                 const std::string configuredCode = configuredLoginCode();
                 const std::string submittedCode = formValue(requestBody, "code");
-                if (!configuredCode.empty() && validateLoginCode(submittedCode, configuredCode)) {
+                if (!configuredCode.empty() &&
+                    validateLoginCode(submittedCode, configuredCode)) {
+                    clearLoginFailures();
                     const std::string cookie = "Set-Cookie: session=" +
                         newSession() + "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
                     const std::string output = responseWithStatus(
                         "303 See Other", {}, "text/plain",
                         cookie + "Location: /\r\n");
+                    sendAll(connection, output);
+                } else if (!recordLoginFailure()) {
+                    const std::string output = responseWithStatus(
+                        "429 Too Many Requests",
+                        "{\"error\":\"too many invalid login attempts; try again later\"}",
+                        "application/json", "Retry-After: 60\r\n");
                     sendAll(connection, output);
                 } else {
                     const std::string output = responseWithStatus(
@@ -2092,7 +2131,10 @@ int WebServer::run() {
                     "303 See Other", {}, "text/plain", "Location: /login\r\n");
                 sendAll(connection, output);
                 close(connection); continue;
-            } else if (method != "GET") body = "{\"error\":\"GET required\"}";
+            } else if (method != "GET") {
+                body = "{\"error\":\"GET required\"}";
+                responseStatus = "405 Method Not Allowed";
+            }
             else if (path == "/") {
                 std::string html = page();
                 const std::string marker = "</body>";
@@ -2106,20 +2148,28 @@ int WebServer::run() {
             } else if (path == "/api/session") {
                 body = json({{"status", "ready"}}).dump();
             } else if (path == "/api/market-holidays") {
-                body = marketHolidays();
+                try {
+                    body = marketHolidays();
+                } catch (const std::exception& error) {
+                    body = json({{"error", userSafeSnapshotError(error.what())}}).dump();
+                    responseStatus = "502 Bad Gateway";
+                }
             } else if (path.rfind("/api/market-quotes?instrument_key=", 0) == 0) {
                 const auto keys = instrumentKeys(queryValue(path, "instrument_key"));
                 if (!validInstrumentKeyBatch(keys)) {
                     body = json({{"error", "instrument_key must contain 1 to 500 instruments"}}).dump();
+                    responseStatus = "400 Bad Request";
                 } else {
                     const auto quotes = client_.fetchMarketQuotes(keys);
                     body = quotes.ok ? quotes.rawBody : json({{"error", quotes.error}}).dump();
+                    if (!quotes.ok) responseStatus = "502 Bad Gateway";
                 }
             } else if (path == "/api/market-feed/authorize") {
                 const auto authorization = client_.authorizeMarketDataFeed();
                 body = authorization.ok
                     ? json({{"status", "success"}}).dump()
                     : json({{"error", authorization.error}}).dump();
+                if (!authorization.ok) responseStatus = "502 Bad Gateway";
             } else if (path == "/api/stream/quotes") {
                 json quotes = json::array();
                 for (const auto& quote : marketFeed_.latestQuotes()) {
@@ -2152,13 +2202,16 @@ int WebServer::run() {
                             {"value", rsi.value}, {"interpretation", rsi.interpretation},
                             {"reason", rsi.reason}}).dump()
                     : json({{"error", rsi.reason}}).dump();
+                if (!rsi.ok) responseStatus = "400 Bad Request";
             } else if (path.rfind("/api/market-quote/ohlc?instrument_key=", 0) == 0) {
                 const auto keys = instrumentKeys(queryValue(path, "instrument_key"));
                 if (!validInstrumentKeyBatch(keys)) {
                     body = json({{"error", "instrument_key must contain 1 to 500 valid instruments"}}).dump();
+                    responseStatus = "400 Bad Request";
                 } else {
                     const auto quotes = client_.fetchOhlcQuotes(keys, queryValue(path, "interval"));
                     body = quotes.ok ? quotes.rawBody : json({{"error", quotes.error}}).dump();
+                    if (!quotes.ok) responseStatus = "502 Bad Gateway";
                 }
             } else if (path.rfind("/api/stock-analysis?symbol=", 0) == 0) {
                 std::string symbol = path.substr(std::string("/api/stock-analysis?symbol=").size());
@@ -2166,6 +2219,7 @@ int WebServer::run() {
                 if (encodedAmp != std::string::npos) symbol.replace(encodedAmp, 3, "&");
                 if (!validAnalysisSymbol(symbol)) {
                     body = json({{"status", "error"}, {"error", "invalid stock symbol"}}).dump();
+                    responseStatus = "400 Bad Request";
                 } else {
                     std::lock_guard<std::mutex> lock(analysisMutex_);
                     if (stockAnalysisResults_.size() + stockAnalysisErrors_.size() >= 64) {
@@ -2193,6 +2247,7 @@ int WebServer::run() {
                         body = json({{"status", "running"}}).dump();
                     } else if (stockAnalysisErrors_.count(symbol)) {
                         body = json({{"status", "error"}, {"error", stockAnalysisErrors_[symbol]}}).dump();
+                        responseStatus = "502 Bad Gateway";
                     } else {
                         body = stockAnalysisResults_[symbol];
                     }
@@ -2201,6 +2256,7 @@ int WebServer::run() {
                 const std::string symbol = urlDecode(path.substr(std::string("/api/fundamentals?symbol=").size()));
                 if (!validAnalysisSymbol(symbol)) {
                     body = json({{"status", "error"}, {"error", "invalid stock symbol"}}).dump();
+                    responseStatus = "400 Bad Request";
                 } else {
                     std::lock_guard<std::mutex> lock(analysisMutex_);
                     if (fundamentalsResults_.size() + fundamentalsErrors_.size() >= 64) {
@@ -2223,8 +2279,10 @@ int WebServer::run() {
                         }).detach();
                     }
                     if (fundamentalsRunning_.count(symbol)) body = json({{"status", "running"}}).dump();
-                    else if (fundamentalsErrors_.count(symbol)) body = json({{"status", "error"}, {"error", fundamentalsErrors_[symbol]}}).dump();
-                    else body = fundamentalsResults_[symbol];
+                    else if (fundamentalsErrors_.count(symbol)) {
+                        body = json({{"status", "error"}, {"error", fundamentalsErrors_[symbol]}}).dump();
+                        responseStatus = "502 Bad Gateway";
+                    } else body = fundamentalsResults_[symbol];
                 }
             } else if (path == "/api/global-news") {
                 // Use 'holdings' category since Upstox doesn't support 'global' category
@@ -2234,6 +2292,7 @@ int WebServer::run() {
                     // Provide detailed error message for frontend error display
                     std::cerr << "Backend: global news fetch failed (" << global.error << ")\n";
                     body = json({{"status", "error"}, {"data", json::array()}, {"error", global.error}, {"source", "unavailable"}}).dump();
+                    responseStatus = "502 Bad Gateway";
                 } else {
                     body = global.rawBody;
                 }
@@ -2267,6 +2326,7 @@ int WebServer::run() {
                             body = json({{"status", "running"}}).dump();
                         } else if (!analysisError_.empty()) {
                             body = json({{"status", "error"}, {"error", analysisError_}}).dump();
+                            responseStatus = "502 Bad Gateway";
                         } else {
                             body = analysisResult_;
                         }
@@ -2296,17 +2356,25 @@ int WebServer::run() {
                     body = json({{"status", "error"},
                                  {"error", userSafeSnapshotError(e.what())},
                                  {"source", "unavailable"}}).dump();
+                    responseStatus = "502 Bad Gateway";
                 }
                 }
             } else if (path == "/api/config") body = json({{"status", "ready"}, {"holdings_file", holdingsFile_}}).dump();
-            else body = json({{"error", "not found"}}).dump();
-        } catch (const std::exception& e) {
-            body = json({{"error", "Request failed"}, {"details", e.what()}}).dump();
+            else {
+                body = json({{"error", "not found"}}).dump();
+                responseStatus = "404 Not Found";
+            }
+        } catch (const std::exception&) {
+            body = json({{"error", "Request failed"}}).dump();
+            responseStatus = "500 Internal Server Error";
         }
         const std::string sessionCookie = "Set-Cookie: session=" +
             cookieValue(requestText) +
             "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
-        const std::string output = response(body, "application/json", sessionCookie);
+        const std::string allowHeader = responseStatus == "405 Method Not Allowed"
+            ? "Allow: GET\r\n" : "";
+        const std::string output = responseWithStatus(
+            responseStatus, body, "application/json", allowHeader + sessionCookie);
         sendAll(connection, output);
         close(connection);
                 } while (false);

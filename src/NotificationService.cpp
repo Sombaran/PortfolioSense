@@ -88,6 +88,9 @@ std::string NotificationService::send(Notification& notification) {
 
     notification.sent = sentAny;
     notification.sentTime = time(nullptr);
+    if (!sentAny && notification.error.empty()) {
+        notification.error = "No configured notification channel completed delivery";
+    }
 
     // Add to history
     history_.push_back(notification);
@@ -324,45 +327,41 @@ bool NotificationService::sendViaWebSocket(const Notification& notification) {
 
 bool NotificationService::sendViaWebhook(const Notification& notification,
                                           const WebhookEndpoint& endpoint) {
+    (void)notification;
     if (!endpoint.active) {
         return false;
     }
-
-    // TODO: Make HTTP POST request to endpoint.url with notification JSON
-    // Use libcurl or similar to send the webhook payload
-    return true;
+    return false;
 }
 
 bool NotificationService::sendViaFirebase(const Notification& notification) {
+    (void)notification;
     if (firebaseConfig_.registeredDeviceTokens.empty() ||
         firebaseConfig_.serverKey.empty()) {
         return false;
     }
 
-    // TODO: Call Firebase Cloud Messaging API
-    // POST to https://fcm.googleapis.com/fcm/send with server key and device tokens
-    return true;
+    return false;
 }
 
 bool NotificationService::sendViaEmail(const Notification& notification) {
+    (void)notification;
     if (emailConfig_.recipientEmails.empty() ||
         emailConfig_.senderEmail.empty()) {
         return false;
     }
 
-    // TODO: Connect to SMTP server and send email
-    // Use libcurl or similar for SMTP protocol
-    return true;
+    return false;
 }
 
 bool NotificationService::sendViaSMS(const Notification& notification) {
+    (void)notification;
     if (smsConfig_.recipientPhones.empty() ||
         smsConfig_.provider.empty()) {
         return false;
     }
 
-    // TODO: Call SMS provider API (Twilio, AWS SNS, etc.)
-    return true;
+    return false;
 }
 
 }  // namespace folio

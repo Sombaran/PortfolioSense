@@ -182,6 +182,11 @@ bool SignalGenerator::validateSignalRisk(const SignalResult& signal,
                                           double portfolioTotalValue,
                                           double positionValue,
                                           double sectorExposure) const {
+    if (!std::isfinite(portfolioTotalValue) || portfolioTotalValue <= 0.0 ||
+        !std::isfinite(positionValue) || positionValue < 0.0 ||
+        !std::isfinite(sectorExposure) || sectorExposure < 0.0) {
+        return false;
+    }
     // Check position risk
     double positionRiskPercent = (positionValue / portfolioTotalValue) * 100.0;
     if (positionRiskPercent > config_.maxPositionRisk) {

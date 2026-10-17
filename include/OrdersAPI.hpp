@@ -9,16 +9,10 @@
 namespace folio {
 
 /**
- * @brief Upstox Orders API integration with automated execution support.
+ * @brief Order risk simulation interface.
  * 
- * Executes buy/sell orders on Upstox platform when signals meet configured
- * criteria. All orders are logged for audit trail. Supports automatic
- * cancellation on adverse price moves.
- * 
- * Security: Orders require explicit user authorization with 2FA.
- * Risk management: Portfolio limits are enforced before execution.
- * 
- * v2.0.0+: Automates trade execution for qualified signals.
+ * Live broker execution is not implemented. Submission, cancellation,
+ * status, and 2FA APIs fail closed rather than returning simulated success.
  */
 class OrdersAPI {
 public:
@@ -35,7 +29,8 @@ public:
         COMPLETED,       // Fully executed
         CANCELLED,       // User cancelled
         REJECTED,        // Exchange rejected
-        EXPIRED          // Order expired
+        EXPIRED,         // Order expired
+        UNAVAILABLE      // Live broker operation is not implemented
     };
 
     struct Order {
@@ -134,7 +129,7 @@ public:
                                    double currentHealthScore);
 
     /**
-     * @brief Place an order (requires pre-approval or manual authorization).
+     * @brief Attempt order submission; currently rejects without contacting broker.
      * @param symbol Stock symbol.
      * @param quantity Units to buy/sell.
      * @param side "BUY" or "SELL".
@@ -229,8 +224,6 @@ private:
     std::string baseUrl_;
     ExecutionConfig config_;
     bool autoExecutionEnabled_ = false;
-    bool authorized2FA_ = false;
-    time_t auth2FAExpiryTime_ = 0;
 
     // Helper methods
     bool validateOrderRisks(const Order& order,

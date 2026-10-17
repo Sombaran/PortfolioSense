@@ -5,6 +5,8 @@
 #include <limits>
 #include <cstdint>
 #include <cstring>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -384,14 +386,28 @@ TEST(OrdersAPI, SimulateAndPlaceSecurityValidatedOrders) {
 
     const auto sim = api.simulateOrder("NSE_EQ|INE009A01021", 10, "BUY", folio::OrdersAPI::OrderType::LIMIT,
                                        150.0, 100000.0, 60.0);
-    EXPECT_TRUE(sim.valid);
-    EXPECT_EQ(sim.reason, "Order simulation valid");
+    EXPECT_FALSE(sim.valid);
+    EXPECT_FALSE(sim.riskChecks.sectorRiskOk);
+    EXPECT_NE(sim.reason.find("Sector exposure is unavailable"), std::string::npos);
+    EXPECT_NE(sim.riskChecks.violatedLimits.find("sector_exposure_unverified"),
+              std::string::npos);
 
     const auto place = api.placeOrder("NSE_EQ|INE009A01021", 10, "BUY", folio::OrdersAPI::OrderType::LIMIT,
                                       150.0, 0.0, "unit-test");
-    EXPECT_EQ(place.status, folio::OrdersAPI::OrderStatus::PENDING);
+    EXPECT_EQ(place.status, folio::OrdersAPI::OrderStatus::REJECTED);
+    EXPECT_TRUE(place.orderId.empty());
+    EXPECT_NE(place.remarks.find("no order was sent"), std::string::npos);
     EXPECT_EQ(place.symbol, "NSE_EQ|INE009A01021");
     EXPECT_EQ(place.side, "BUY");
+    EXPECT_FALSE(api.cancelOrder("not-a-real-order"));
+    EXPECT_EQ(api.getOrderStatus("not-a-real-order"),
+              folio::OrdersAPI::OrderStatus::UNAVAILABLE);
+    EXPECT_FALSE(api.authorize2FA("123456"));
+    api.setAutoExecutionEnabled(true);
+    EXPECT_FALSE(api.isAutoExecutionEnabled());
+    EXPECT_FALSE(api.simulateOrder("NSE_EQ|INE009A01021", 1, "BUY",
+                                   folio::OrdersAPI::OrderType::LIMIT, 10.0,
+                                   0.0, 50.0).valid);
 }
 
 TEST(NotificationService, SendAlertQueuesNotification) {
@@ -404,10 +420,18 @@ TEST(NotificationService, SendAlertQueuesNotification) {
 
     const auto id = service.send(note);
     EXPECT_FALSE(id.empty());
-    EXPECT_TRUE(service.getNotificationStatus(id).sent || !service.getNotificationStatus(id).id.empty());
+    const auto undelivered = service.getNotificationStatus(id);
+    EXPECT_FALSE(undelivered.sent);
+    EXPECT_NE(undelivered.error.find("No configured notification channel"),
+              std::string::npos);
+
+    service.setNotificationCallback([](const auto&) {});
+    const auto deliveredId = service.sendAlert(
+        folio::NotificationService::AlertType::PRICE_ALERT, "Test", "Delivered", {}, 0.9);
+    EXPECT_TRUE(service.getNotificationStatus(deliveredId).sent);
 }
 
-TEST(MLModels, PredictPriceAndTrendFromSyntheticBars) {
+TEST(MLModels, RefusesPredictionsWithoutLoadedInferenceModel) {
     folio::MLModels model("config/ml_models/");
     folio::MLModels::OhlcData data;
     data.closes.resize(30);
@@ -416,13 +440,12 @@ TEST(MLModels, PredictPriceAndTrendFromSyntheticBars) {
         data.closes[i] = 100.0 + static_cast<double>(i) * 0.5;
     }
 
+    EXPECT_FALSE(model.loadModel("price_predictor"));
     const auto price = model.predictPrice("RELIANCE", data);
-    EXPECT_TRUE(price.ok);
-    EXPECT_GT(price.predictedClose, 0.0);
+    EXPECT_FALSE(price.ok);
 
     const auto trend = model.predictTrend("RELIANCE", data);
-    EXPECT_TRUE(trend.ok);
-    EXPECT_FALSE(trend.trend.empty());
+    EXPECT_FALSE(trend.ok);
 }
 
 TEST(SignalGenerator, GenerateWeightedSignalFromIndicators) {
@@ -449,6 +472,19 @@ TEST(SignalGenerator, GenerateWeightedSignalFromIndicators) {
                 signal.action == folio::SignalGenerator::Signal::BUY);
 }
 
+TEST(SignalGenerator, RejectsInvalidRiskInputs) {
+    folio::SignalGenerator generator({});
+    folio::SignalGenerator::SignalResult signal;
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double infinity = std::numeric_limits<double>::infinity();
+
+    EXPECT_TRUE(generator.validateSignalRisk(signal, 10000.0, 100.0, 10.0));
+    EXPECT_FALSE(generator.validateSignalRisk(signal, 0.0, 100.0, 10.0));
+    EXPECT_FALSE(generator.validateSignalRisk(signal, 10000.0, nan, 10.0));
+    EXPECT_FALSE(generator.validateSignalRisk(signal, 10000.0, 100.0, infinity));
+    EXPECT_FALSE(generator.validateSignalRisk(signal, 10000.0, -1.0, 10.0));
+}
+
 TEST(TaskScheduler, SchedulesAndRunsTasks) {
     folio::TaskScheduler scheduler(1, 8);
     std::atomic<int> counter{0};
@@ -457,6 +493,45 @@ TEST(TaskScheduler, SchedulesAndRunsTasks) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     EXPECT_GE(counter.load(), 1);
     scheduler.shutdown();
+    EXPECT_THROW(scheduler.schedule("after-shutdown", [] {}), std::runtime_error);
+}
+
+TEST(TaskScheduler, RunsQueuedTasksByPriorityAndKeepsFifoForTies) {
+    folio::TaskScheduler scheduler(1, 8);
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool workerStarted = false;
+    bool releaseWorker = false;
+    std::vector<int> order;
+    scheduler.schedule("blocker", [&] {
+        std::unique_lock<std::mutex> lock(mutex);
+        workerStarted = true;
+        condition.notify_all();
+        condition.wait(lock, [&] { return releaseWorker; });
+    });
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        ASSERT_TRUE(condition.wait_for(lock, std::chrono::seconds(2),
+                                       [&] { return workerStarted; }));
+    }
+    scheduler.schedule("low", [&] { order.push_back(0); }, 0);
+    scheduler.schedule("high-first", [&] { order.push_back(2); }, 2);
+    scheduler.schedule("high-second", [&] { order.push_back(2); }, 2);
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        releaseWorker = true;
+    }
+    condition.notify_all();
+    scheduler.shutdown();
+    ASSERT_EQ(order.size(), 3u);
+    EXPECT_EQ(order[0], 2);
+    EXPECT_EQ(order[1], 2);
+    EXPECT_EQ(order[2], 0);
+}
+
+TEST(TaskScheduler, RejectsInvalidWorkerAndQueueConfiguration) {
+    EXPECT_THROW((folio::TaskScheduler(0, 8)), std::invalid_argument);
+    EXPECT_THROW((folio::TaskScheduler(1, 0)), std::invalid_argument);
 }
 
 TEST(StreamingClient, ConnectAndReportConnectionState) {

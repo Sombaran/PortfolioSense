@@ -188,9 +188,10 @@ of every returned row before analytics run. Rows with no
       `https://api.upstox.com/v2/login/authorization/dialog?client_id=<API_KEY>&redirect_uri=<REDIRECT>&response_type=code`.
    2. Exchange the returned `code` for an access token via
       `POST https://api.upstox.com/v2/login/authorization/token`.
-3. The response contains `access_token`. Access tokens are typically
-   valid until 03:30 IST on the next trading day — automate refresh if
-   you cron this tool.
+3. The response contains `access_token`. Access tokens are valid until
+   03:30 IST on the next trading day. This application reads a supplied
+   access token but does not implement the OAuth callback or refresh-token
+   exchange; obtain and replace the token through Upstox after it expires.
 
 Export the token in the shell where you'll run the CLI:
 
@@ -248,8 +249,8 @@ Update the report-shaped holdings CSV after the NSE session closes:
 ```
 
 `$HOME/.upstox.env` should be a `chmod 600` file that does
-`export UPSTOX_ACCESS_TOKEN=...` and is rotated whenever the broker
-refresh token expires.
+`export UPSTOX_ACCESS_TOKEN=...` and is updated whenever the access token
+expires. No refresh-token automation is implemented by this application.
 
 ---
 

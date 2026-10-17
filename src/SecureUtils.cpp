@@ -507,11 +507,10 @@ std::string generateRandomString(size_t length) {
         return "";
     }
 
-    std::random_device random;
-    std::uniform_int_distribution<int> dist(0, 255);
     std::string bytes(length, '\0');
-    for (std::size_t i = 0; i < length; ++i) {
-        bytes[i] = static_cast<char>(dist(random));
+    std::ifstream randomSource("/dev/urandom", std::ios::binary);
+    if (!randomSource.read(bytes.data(), static_cast<std::streamsize>(bytes.size()))) {
+        return "";
     }
 
     std::ostringstream ss;

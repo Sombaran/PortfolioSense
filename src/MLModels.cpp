@@ -158,9 +158,8 @@ MLModels::MeanReversionProbability MLModels::predictMeanReversion(
 }
 
 bool MLModels::loadModel(const std::string& modelName) {
-    // Load model weights from disk
-    // TODO: Implement model loading (e.g., ONNX, TensorFlow Lite, custom format)
-    return true;
+    (void)modelName;
+    return false;
 }
 
 void MLModels::clearCache(const std::string& symbol) {
@@ -191,16 +190,9 @@ time_t MLModels::getLastPredictionTime(const std::string& symbol) const {
 
 std::vector<double> MLModels::runInference(const std::string& modelName,
                                             const std::vector<double>& features) {
-    // TODO: Implement actual model inference
-    // For now, return placeholder results
-    std::vector<double> result(4);
-    if (!features.empty()) {
-        result[0] = features.back();  // Placeholder
-        result[1] = 0.75;  // Confidence
-        result[2] = 0.95;
-        result[3] = 1.05;
-    }
-    return result;
+    (void)modelName;
+    (void)features;
+    return {};
 }
 
 std::vector<double> MLModels::extractFeatures(const OhlcData& ohlcData) {

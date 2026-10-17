@@ -56,8 +56,9 @@ It is NOT required for:
     That prints a long string starting with 'eyJhbGciOi...'.
     That is your token.
 
-    Tokens are valid until 03:30 IST on the next trading day, so
-    you must redo this daily unless you automate refresh.
+    Access tokens are valid until 03:30 IST on the next trading day.
+    This application does not implement an OAuth callback or token-refresh
+    flow; obtain a new access token through Upstox when the current token expires.
 
 
 ------------------------------------------------------------
@@ -126,10 +127,8 @@ Shell notes:
   * Never paste it in chat or issues.
   * Never pass it on the command line - ps sees CLI args.
     This tool reads it from the environment only.
-  * Rotate the file when the token expires. The OAuth response
-    also carries a refresh_token if you enable that flow in your
-    app settings - automate refresh if you cron the tool
-    (see docs/RunSteps.md, section 6).
+  * Rotate the file when the access token expires. This application
+    does not consume a refresh token or automate token renewal.
   * Behind a corporate proxy set HTTPS_PROXY in the same shell
     before running the tool - libcurl picks it up automatically:
 

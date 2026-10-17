@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -50,6 +51,8 @@ private:
     bool authenticated(const std::string& request) const;
     std::string newSession();
     void removeSession(const std::string& request);
+    bool recordLoginFailure();
+    void clearLoginFailures();
 
     const UpstoxClient& client_;
     std::string holdingsFile_;
@@ -66,6 +69,8 @@ private:
     mutable std::chrono::steady_clock::time_point marketHolidaysExpires_{};
     mutable std::mutex sessionMutex_;
     mutable std::unordered_map<std::string, std::chrono::steady_clock::time_point> sessions_;
+    mutable std::mutex loginAttemptMutex_;
+    std::deque<std::chrono::steady_clock::time_point> loginFailures_;
     mutable std::mutex analysisMutex_;
     mutable bool analysisRunning_ = false;
     mutable std::string analysisResult_;

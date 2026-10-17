@@ -10,10 +10,10 @@
 | `include/Position.hpp`              | (header-only)                       | Domain struct mirroring the API payload.       |
 | `include/PortfolioLoader.hpp`       | `src/PortfolioLoader.cpp`           | CSV / JSON reader for user-supplied portfolios.|
 | `include/TechnicalIndicators.hpp`   | `src/TechnicalIndicators.cpp`       | Indicators: RSI, MACD, Bollinger Bands, Stochastic, ATR (v2.0.0+). |
-| `include/MLModels.hpp`              | `src/MLModels.cpp`                  | Predictive models for price & trend forecast (v2.0.0+). |
+| `include/MLModels.hpp`              | `src/MLModels.cpp`                  | ML interface; inference fails closed until a model backend exists. |
 | `include/SignalGenerator.hpp`       | `src/SignalGenerator.cpp`           | Buy/Sell/Hold consensus signal generation (v2.0.0+). |
-| `include/OrdersAPI.hpp`             | `src/OrdersAPI.cpp`                 | Upstox Orders API integration with audit logging (v2.0.0+). |
-| `include/NotificationService.hpp`   | `src/NotificationService.cpp`       | Push notifications for signals & alerts (v2.0.0+). |
+| `include/OrdersAPI.hpp`             | `src/OrdersAPI.cpp`                 | Simulation and explicit unavailable responses; no live broker orders. |
+| `include/NotificationService.hpp`   | `src/NotificationService.cpp`       | Browser callback notifications; external channel stubs fail closed. |
 | `include/PortfolioHealth.hpp`       | `src/PortfolioHealth.cpp`           | Analytics, report renderer, scoring, alerts.   |
 | `include/WebServer.hpp`             | `src/WebServer.cpp`                 | Local browser UI, JSON routes, sentiment, metrics. |
 | `src/main.cpp`                      | —                                   | CLI, terminal tabs, and `--web` entry point.   |
@@ -51,16 +51,10 @@ connection failure from an empty market update.
 
 All indicators are computed from chronological OHLC data and cached for 5 minutes.
 
-**MLModels** loads pre-trained model weights and runs inference on recent OHLC 
-data. Models predict:
-- Next-day close price (with confidence interval)
-- Trend probability (up/down/neutral)
-- Volatility forecast
-- Mean reversion probability
-
-Models are loaded from `config/ml_models/` and support ONNX Runtime or custom 
-C++ inference. Inference results cache for 1 hour unless market volatility 
-spikes beyond configured thresholds.
+**MLModels** does not currently load model weights or run inference. Model
+loading returns unavailable and prediction calls return failed results. The
+signal generator must treat these predictions as absent until a real, tested
+inference backend is integrated.
 
 **SignalGenerator** combines multiple data sources:
 - Technical indicator consensus (majority vote weighted by indicator confidence)
@@ -77,25 +71,15 @@ It produces signals with:
 
 Signal thresholds are configurable per symbol, sector, and market condition.
 
-**OrdersAPI** wraps Upstox `/v2/orders/regular` endpoint:
-- Validates order against portfolio risk limits
-- Supports limit/market/stop-loss orders
-- Simulates order impact on portfolio health before execution
-- Logs all orders (buy/sell/cancel) with request/response
-- Supports automatic order cancellation after <N> minutes with adverse price move
+**OrdersAPI** currently offers fail-closed simulation only. `placeOrder`
+returns `REJECTED` and explicitly states that no order was sent; cancel, order
+lookup, and 2FA authorization return unavailable/false. Sector exposure is not
+known by this stub, so simulation rejects rather than assuming the risk check
+passed. No live order lifecycle or market-hours validation is implemented.
 
-Order execution requires:
-- Signal confidence >= configured threshold
-- Portfolio risk metrics within limits
-- Manual approval via 2FA (configurable)
-- Market hours validation
-
-**NotificationService** dispatches alerts via:
-- WebSocket to connected browser clients (low-latency)
-- HTTP POST to configured webhooks (Slack, Discord, IFTTT, etc.)
-- Firebase Cloud Messaging for mobile apps (with device token registration)
-- Email via configured SMTP server
-- SMS via Twilio or similar (optional)
+**NotificationService** reports delivery only when a browser callback is
+configured. Webhook, Firebase, email, and SMS adapters are not implemented;
+attempts to use these paths return an explicit undelivered state.
 
 Notification types include:
 - `SIGNAL_GENERATED` — Buy/Sell opportunity detected

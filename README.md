@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.66
+Version: 2.0.68
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -15,6 +15,10 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.68 release notes](design/RELEASE_NOTES_V2.0.68.md)** — fix scheduler races, correct HTTP statuses, harden login sessions, and disable success-shaped stubs
+- **[v2.0.68 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.68.md)** — fail-closed safety for incomplete order, notification, and ML integrations
+- **[v2.0.67 release notes](design/RELEASE_NOTES_V2.0.67.md)** — remove the duplicate Overview Refresh card and make privacy eye controls reliable
+- **[v2.0.67 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.67.md)** — delegated metric visibility events and live value masking
 - **[v2.0.66 release notes](design/RELEASE_NOTES_V2.0.66.md)** — display actionable Upstox authorization and network causes when Refresh fails
 - **[v2.0.66 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.66.md)** — retain existing data and expose safe refresh diagnostics
 - **[v2.0.65 release notes](design/RELEASE_NOTES_V2.0.65.md)** — prevent manual Refresh from failing when it overlaps an initial portfolio snapshot
@@ -58,13 +62,30 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.66
+Current release: 2.0.68
 
-Last updated: October 16, 2026
+Last updated: October 17, 2026
+
+Version 2.0.68 fixes task scheduling synchronization and priority ordering,
+returns appropriate HTTP statuses for unsupported methods, missing routes,
+and unavailable portfolio snapshots, and rate-limits invalid local login
+attempts. Session IDs now use operating-system cryptographic randomness.
+Placeholder ML inference, broker order operations, and external notification
+channels no longer report fake successes; order-risk checks fail closed when
+sector exposure cannot be verified. Upstox credentials remain server-side.
+See the v2.0.68 release notes and implementation summary for details.
+
+Version 2.0.67 removes the redundant Overview Update/Refresh metric card;
+the dashboard's main Refresh control remains available. Market Value and Day
+P&L eye controls now use delegated click handling on the stable dashboard
+container, so they continue to work after the Overview is re-rendered. Hidden
+values remain masked through refreshes and the preference is retained locally.
+Other page optimizations, authenticated endpoints, and server-side Stock API
+credential handling are unchanged. The post-login popup summarizes the fix.
 
 Version 2.0.66 makes Refresh failures actionable instead of masking them with
 the same generic warning. HTTP 401/403 is identified as a rejected Upstox
-access token and instructs the user to renew it through OAuth; DNS/network
+access token and advises obtaining a replacement through Upstox; DNS/network
 failures advise checking connectivity. The existing view remains visible.
 Recent private dashboard logs showed both HTTP 401 responses and DNS lookup
 failures, so this release clarifies that a button retry cannot renew a rejected

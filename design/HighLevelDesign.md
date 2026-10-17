@@ -4,13 +4,14 @@
 
 Give an Indian retail trader an at-a-glance answer to a single question —
 **"Is my portfolio healthy right now?"** — through a local C++ web dashboard
-or the terminal interface, with optional automated trade execution support.
+or the terminal interface. The current application is read-only and advisory;
+it does not submit broker orders or automate trade execution.
 
 The service pulls positions and long-term holdings from Upstox (both via REST 
 and real-time WebSocket streaming), fetches news for the account holdings, 
 filters it to symbols in `config/holding.csv`, and exposes analytics, advisory 
-sentiment signals, technical indicators, ML-driven predictions, and Prometheus 
-metrics. The Alerts view uses long-term holdings as its authoritative row set, 
+sentiment signals, technical indicators, and Prometheus metrics. ML inference is
+unavailable until a real model backend is supplied. The Alerts view uses long-term holdings as its authoritative row set,
 so a holding without a matching article is still represented with a neutral 
 review state.
 
@@ -58,26 +59,25 @@ Broker credentials and the authorized WebSocket URL remain server-side.
 
 **Technical Indicators** — Expanded indicator suite includes RSI, MACD, 
 Bollinger Bands, Stochastic Oscillator, and ATR, all computed in C++ for 
-low-latency analysis. Indicators feed into signal generation and ML models.
+low-latency analysis. Indicators can inform advisory signal generation; no
+model inference is active.
 
-**Machine Learning Models** — Python-based predictive models (trained on 
-historical data) run server-side and integrate with C++ signal generation to 
-produce consensus buy/sell/hold recommendations with confidence scores.
+**Machine Learning Models** — The current `MLModels` implementation does not
+load a model or produce predictions; its inference methods fail closed until a
+real backend is integrated.
 
-**Signal Generation Engine** — Autonomous system that combines technical 
-indicators, ML predictions, news sentiment, and portfolio risk metrics to 
-generate actionable trading signals (Buy/Sell/Hold) with associated risk 
-scores and opportunity confidence levels.
+**Signal Generation Engine** — Local technical indicators and news-derived
+signals are advisory. The UI does not claim a trained prediction model or
+authorize trades.
 
-**Mobile Notifications & Alerts** — Push notifications via configurable 
-endpoints alert users to price movements, generated signals, portfolio health 
-degradation, and important news events. Notification preferences are 
-user-configurable per alert type.
+**Mobile Notifications & Alerts** — Browser/dashboard visibility is available.
+Webhook, Firebase, email, and SMS delivery are not configured integrations and
+return explicit undelivered status rather than success.
 
-**Orders API Integration** — Authenticated integration with Upstox Orders API 
-allows automated trade placement when signals meet configured criteria. All 
-orders are logged for audit, support manual override with 2FA, and can be 
-automatically canceled if market conditions change significantly.
+**Orders API Integration** — Live submission, cancellation, lookup, and
+two-factor authorization are not implemented. Order requests are rejected
+explicitly; no broker order is sent. Simulation fails closed when required
+portfolio or sector exposure data is not available.
 The Alerts page renders only text and table content; article thumbnails or other
 attached images are intentionally excluded from that view.
 The raw instrument-key Stock column is also excluded from the Alerts table; the
@@ -144,7 +144,8 @@ Non-goals:
 
 * Historical / EOD analytics — Upstox news is limited to its recent-news window.
 * Full risk model. The health score is a heuristic, deliberately simple.
-* Direct position modification through the UI; order placement is API-only and signal-driven.
+* Direct position modification or live order placement; the application is
+  read-only and advisory.
 
 ---
 
@@ -177,8 +178,8 @@ Non-goals:
                      └───────────────┬──────────────────┘
                                      ▼
                      ┌──────────────────────────────────┐
-                     │      MLModels::Predict()         │
-                     │  (Price movements, trends)       │
+                     │       MLModels                   │
+                     │   (inference unavailable)        │
                      └───────────────┬──────────────────┘
                                      ▼
                      ┌──────────────────────────────────┐
@@ -246,41 +247,31 @@ saved news signal by mapping Upstox instrument keys through live holdings.
    * Stochastic Oscillator for overbought/oversold
    * ATR for volatility measurement
    
-5. **Machine Learning** — `MLModels` module invokes trained models to predict:
-   * Short-term price movements
-   * Trend continuation probability
-   * Volatility forecast
+5. **Machine Learning** — `MLModels` currently reports inference unavailable;
+   it does not fabricate price, trend, or volatility predictions.
    
 6. **Signal Generation** — `SignalGenerator` combines:
    * Technical indicator consensus
-   * ML model predictions
    * News sentiment analysis
    * Portfolio risk metrics
-   → Produces Buy/Sell/Hold signals with confidence scores
+   → Produces advisory review signals and confidence scores
    
-7. **Risk Scoring** — Dynamic calculation of:
+7. **Risk Scoring** — Review metrics include:
    * Position concentration risk
    * Sector concentration risk
    * Volatility risk
    * Correlation-based diversification risk
-   → Factors into signal thresholds and order execution guards
+   → No live order execution guard is currently implemented
    
 8. **News processing** — live holdings are matched to `config/holding.csv`; each
   article receives a keyword sentiment score and advisory signal.
   
-9. **Notifications** — `NotificationService` pushes:
-   * Generated trading signals (if configured)
-   * Price breakout/breakdown alerts
-   * Portfolio health degradation warnings
-   * Important news events
-   → To mobile apps, desktop clients, or configured webhooks
+9. **Notifications** — the dashboard provides review visibility. External
+   webhook, mobile, email, and SMS delivery adapters are unavailable.
    
-10. **Order Execution** (if enabled) — `OrdersAPI` module:
-    * Validates signal confidence against threshold
-    * Checks portfolio risk limits
-    * Simulates order impact
-    * Executes via Upstox Orders API (with audit logging)
-    * Supports automatic cancellation on adverse price movements
+10. **Order Operations** — `OrdersAPI` currently rejects submission and
+    reports live order lookup/cancellation/2FA unavailable. Simulation fails
+    closed when required portfolio-risk inputs are unknown.
     
 11. **Rendering** — terminal reports, JSON, browser tabs, and Prometheus
   metrics are generated from the live responses with signal overlays.
@@ -325,10 +316,10 @@ the explicit `config/portfolio_news.json` export when `--news` is used.
   your own historical data or integrate external prediction services.
 * **Signal customization** — modify `SignalGenerator` thresholds, weights, and
   consensus logic to match your risk tolerance.
-* **Order automation** — configure `OrdersAPI` with different execution strategies,
-  risk limits, and cancellation policies.
-* **Notification channels** — extend `NotificationService` to support additional
-  endpoints (Slack, Discord, Email, SMS, etc.).
+* **Order execution** — implement and independently validate the broker order
+  lifecycle before enabling any live execution; it is not available today.
+* **Notification channels** — implement authenticated delivery adapters;
+  webhook, Firebase, email, and SMS delivery are not available today.
 * **Richer sentiment** — replace the keyword scorer with ONNX Runtime or a
   separate model service while keeping signals advisory.
 * **Monitoring** — add metrics to `WebServer` for new Grafana panels.

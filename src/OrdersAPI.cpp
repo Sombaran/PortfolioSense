@@ -4,6 +4,7 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 
 namespace folio {
 
@@ -46,19 +47,25 @@ OrdersAPI::OrderSimulation OrdersAPI::simulateOrder(
         sim.reason = "Invalid side (must be BUY or SELL)";
         return sim;
     }
+    if (!std::isfinite(currentPortfolioValue) || currentPortfolioValue <= 0.0 ||
+        !std::isfinite(currentHealthScore)) {
+        sim.reason = "Portfolio value and health score must be valid before simulation";
+        return sim;
+    }
 
     // Estimate commission (typically 0.05% for NSE equity)
     sim.commissionEstimate = (quantity * price) * 0.0005;
 
     // Estimate slippage
-    sim.slippageEstimate = price * (config_.slippageThreshold / 100.0);
+    const double notional = quantity * price;
+    sim.slippageEstimate = notional * (config_.slippageThreshold / 100.0);
 
     // Calculate projected portfolio value
-    double orderValue = (quantity * price) + sim.commissionEstimate + sim.slippageEstimate;
+    double orderValue = notional + sim.commissionEstimate + sim.slippageEstimate;
     if (side == "BUY") {
-        sim.projectedPortfolioValue = currentPortfolioValue + (quantity * price);
+        sim.projectedPortfolioValue = currentPortfolioValue + notional;
     } else {
-        sim.projectedPortfolioValue = currentPortfolioValue - (quantity * price);
+        sim.projectedPortfolioValue = currentPortfolioValue - notional;
     }
 
     // Project health score impact (simplified)
@@ -73,7 +80,9 @@ OrdersAPI::OrderSimulation OrdersAPI::simulateOrder(
     sim.riskChecks.positionRiskOk = positionPercent <= config_.maxPositionRisk;
 
     // Check daily exposure
-    sim.riskChecks.totalRiskOk = (quantity * price) <= config_.maxDailyExposure;
+    sim.riskChecks.totalRiskOk = notional <= config_.maxDailyExposure &&
+                                 notional <= config_.maxOrderSize;
+    sim.riskChecks.sectorRiskOk = checkConcentrationRisk(symbol, quantity);
 
     // Overall validation
     sim.valid = sim.riskChecks.positionRiskOk &&
@@ -89,8 +98,12 @@ OrdersAPI::OrderSimulation OrdersAPI::simulateOrder(
             sim.riskChecks.violatedLimits += "sector_risk ";
         }
         if (!sim.riskChecks.totalRiskOk) {
-            sim.riskChecks.violatedLimits += "daily_exposure ";
+            sim.riskChecks.violatedLimits += "order_size_or_daily_exposure ";
         }
+        if (!sim.riskChecks.sectorRiskOk)
+            sim.riskChecks.violatedLimits += "sector_exposure_unverified ";
+        if (!sim.riskChecks.sectorRiskOk)
+            sim.reason = "Sector exposure is unavailable; order simulation failed closed";
     } else {
         sim.reason = "Order simulation valid";
     }
@@ -140,16 +153,9 @@ OrdersAPI::Order OrdersAPI::placeOrder(
     order.type = type;
     order.price = price;
     order.triggerPrice = triggerPrice;
-    order.status = OrderStatus::PENDING;
+    order.status = OrderStatus::REJECTED;
     order.createdTime = time(nullptr);
-
-    if (config_.logAllOrders) {
-        logOrder(order, "PLACED");
-    }
-
-    // TODO: Call Upstox Orders API to place actual order
-    // order.orderId = ...
-    // order.exchangeOrderId = ...
+    order.remarks = "Live order submission is not implemented; no order was sent.";
 
     return order;
 }
@@ -165,58 +171,41 @@ OrdersAPI::Order OrdersAPI::placeMarketOrder(
 }
 
 bool OrdersAPI::cancelOrder(const std::string& orderId) {
-    // TODO: Call Upstox Orders API to cancel
-    if (config_.logAllOrders) {
-        // logOrder(order, "CANCELLED");
-    }
-    return true;
+    (void)orderId;
+    return false;
 }
 
 OrdersAPI::OrderStatus OrdersAPI::getOrderStatus(const std::string& orderId) {
-    // TODO: Call Upstox Orders API to get status
-    return OrderStatus::PENDING;
+    (void)orderId;
+    return OrderStatus::UNAVAILABLE;
 }
 
 OrdersAPI::Order OrdersAPI::getOrderDetails(const std::string& orderId) {
+    (void)orderId;
     Order order;
-    // TODO: Call Upstox Orders API to get details
+    order.status = OrderStatus::UNAVAILABLE;
+    order.remarks = "Live order lookup is not implemented.";
     return order;
 }
 
 std::vector<OrdersAPI::Order> OrdersAPI::getTodayOrders() {
-    std::vector<Order> orders;
-    // TODO: Call Upstox Orders API to get today's orders
-    return orders;
+    return {};
 }
 
 std::vector<OrdersAPI::Order> OrdersAPI::getOpenOrders() {
-    std::vector<Order> orders;
-    // TODO: Call Upstox Orders API to get open orders
-    return orders;
+    return {};
 }
 
 bool OrdersAPI::authorize2FA(const std::string& token) {
-    // Validate 2FA token (typically 6-digit code)
-    if (token.length() < 4) {
-        return false;
-    }
-
-    authorized2FA_ = true;
-    auth2FAExpiryTime_ = time(nullptr) + 3600;  // Valid for 1 hour
-    return true;
+    (void)token;
+    return false;
 }
 
 void OrdersAPI::revoke2FA() {
-    authorized2FA_ = false;
-    auth2FAExpiryTime_ = 0;
 }
 
 bool OrdersAPI::isAuthorized() const {
-    if (!authorized2FA_) {
-        return false;
-    }
-
-    return time(nullptr) < auth2FAExpiryTime_;
+    return false;
 }
 
 void OrdersAPI::setExecutionConfig(const ExecutionConfig& config) {
@@ -228,7 +217,8 @@ OrdersAPI::ExecutionConfig OrdersAPI::getExecutionConfig() const {
 }
 
 void OrdersAPI::setAutoExecutionEnabled(bool enabled) {
-    autoExecutionEnabled_ = enabled;
+    (void)enabled;
+    autoExecutionEnabled_ = false;
 }
 
 bool OrdersAPI::isAutoExecutionEnabled() const {
@@ -279,9 +269,9 @@ double OrdersAPI::estimateSlippage(const std::string& symbol,
 
 bool OrdersAPI::checkConcentrationRisk(const std::string& symbol,
                                         long quantity) const {
-    // Check if this order would violate sector concentration limits
-    // TODO: Implement actual concentration checking
-    return true;
+    (void)symbol;
+    (void)quantity;
+    return false;
 }
 
 }  // namespace folio

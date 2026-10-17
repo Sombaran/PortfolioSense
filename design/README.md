@@ -1,22 +1,38 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.66`
+**Version:** `2.0.68`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
-### Key Features (v2.0.0+)
+### Current capability status
+
+- **Read-only Upstox data** — holdings, positions, quotes, news, and server-side
+  Market Data Feed V3 are available when a valid access token is supplied.
+- **Advisory analysis** — C++ technical indicators and Python news analysis
+  provide review context; generated signals are not trade instructions.
+- **No live order execution** — order placement, cancellation, lookup, and 2FA
+  are not implemented. Simulations fail closed when required exposure data is
+  unavailable.
+- **No ML inference or external notification delivery** — model prediction and
+  webhook/Firebase/email/SMS stubs report unavailable instead of success.
+- **External token setup** — obtain the Upstox token through its OAuth flow;
+  this application does not implement the OAuth callback or refresh flow.
+
+The historical v2.0.0 notes below describe the original planned/released scope;
+the current capability status above takes precedence where they differ.
+
+### Project characteristics
 
 - **Stream live holdings quotes** through the server-side Upstox V3 WebSocket
-- **Process data in C++/Python** with technical indicators (RSI, MACD, Bollinger Bands) and ML models
-- **Generate insights** with signals, risk scores, and sentiment overlays
-- **Push to UI** with Angular dashboard and mobile notifications
-- **Automate execution** with Orders API when signals meet criteria
+- **Process data in C++/Python** with technical indicators and advisory analysis
+- **Generate review context** with sentiment overlays and portfolio risk metrics
+- **Serve a local browser UI** with authenticated dashboard views
 - **Ship a versioned runtime contract** in x.x.x format, with the UI popup and build metadata reading the same semver value for release transparency
 - **Expose the core implementation as a shared library** so the CLI executable stays lightweight without duplicating source objects
 
 Works with:
 - **Portfolio files** (CSV/JSON) — no broker account needed
-- **Live Upstox accounts** — connect via OAuth token
+- **Live Upstox accounts** — supply a valid access token obtained via OAuth
 - **Offline broker payloads** — analyze saved data
 
 ---
@@ -62,6 +78,10 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.68](RELEASE_NOTES_V2.0.68.md)** — fix scheduler, HTTP, session, and fail-closed integration behavior
+- **[Implementation Summary v2.0.68](IMPLEMENTATION_SUMMARY_V2.0.68.md)** — root causes, tests, and deliberately unavailable integrations
+- **[Release Notes v2.0.67](RELEASE_NOTES_V2.0.67.md)** — remove duplicate Overview Refresh card and stabilize eye controls
+- **[Implementation Summary v2.0.67](IMPLEMENTATION_SUMMARY_V2.0.67.md)** — delegated metric visibility events and retained preference
 - **[Release Notes v2.0.66](RELEASE_NOTES_V2.0.66.md)** — show actionable causes for Upstox auth and network refresh failures
 - **[Implementation Summary v2.0.66](IMPLEMENTATION_SUMMARY_V2.0.66.md)** — safe refresh diagnostics and retained view behavior
 - **[Release Notes v2.0.65](RELEASE_NOTES_V2.0.65.md)** — prevent manual Refresh failure when it overlaps an initial portfolio snapshot
@@ -152,6 +172,9 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.68` — Synchronize scheduler lifecycle and honor task priority; return correct 404/405/502 responses; generate session IDs from OS randomness and rate-limit invalid logins; prevent placeholder orders, 2FA, notification channels, and ML models from reporting success; fail risk simulation closed when sector exposure is unavailable; keep credentials server-side and summarize the release in the login popup.
+
+- `2.0.67` — Remove the duplicate Overview Update/Refresh metric card while retaining the main Refresh control; route Market Value and Day P&L eye clicks through event delegation on the stable view container and preserve mask state on rerender; retain existing UI performance work, session-protected Stock API routes, and server-side credentials, and summarize the changes in the post-login popup.
 - `2.0.66` — Show safe, actionable Refresh failure messages for rejected Upstox access tokens (HTTP 401/403), DNS/network failures, and other snapshot errors instead of suppressing the cause when the dashboard has rendered data; preserve the existing view, avoid returning raw backend exception details, and explain token renewal/network recovery in the login popup.
 - `2.0.65` — Fix manual Refresh failing when it collides with the first in-flight server snapshot and no cached or local data exists: wait for the snapshot lock, reuse a snapshot created while waiting, and preserve the non-forced stale/local fallback path; retain authenticated Stock API access and server-side credentials and summarize the fix in the post-login popup.
 - `2.0.64` — Retry the required Upstox holdings request once for retryable transport errors and set a shared 50-second browser deadline to cover the bounded server-side snapshot request budget; keep optional positions/news failures isolated, preserve auth and server-side credentials, and summarize the fix in the post-login popup.
@@ -639,7 +662,7 @@ baran-capital-view/
 
 **Windows?** Use WSL2, or build with MSVC — `CMakeLists.txt` supports it.
 
-**Token expired?** Tokens last until 03:30 IST next day. Get a new one; automate with `refresh_token` (see [docs/JSON_CONFIG.md](docs/JSON_CONFIG.md)).
+**Token expired?** Tokens are valid until 03:30 IST the next day. This application does not refresh tokens; obtain a replacement through Upstox and update `UPSTOX_ACCESS_TOKEN`. See [token setup](../docs/UPSTOX_TOKEN_SETUP.txt).
 
 ---
 
