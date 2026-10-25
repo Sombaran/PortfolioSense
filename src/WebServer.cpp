@@ -1,21 +1,16 @@
 #include "WebServer.hpp"
 #include "SecureUtils.hpp"
 #include "TechnicalIndicators.hpp"
+#include "PlatformAdapter.hpp"
 
 #include <nlohmann/json.hpp>
 
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <cerrno>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -483,8 +478,12 @@ const char* releaseNoticeV2069Addendum() {
     return R"JS(<script>const releaseBox2069=document.querySelector('[role="dialog"]');if(releaseBox2069){releaseBox2069.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Dashboard reliability and API error clarity · v2.0.69</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Holiday-calendar failures now return HTTP 502 when no cached calendar is available; a retained calendar is marked stale and the market-hours tooltip explains the fallback. Dashboard views expose loading state and ignore responses from outdated navigation. Stock API credentials remain server-side and read-only data behavior is unchanged.</p>')}</script>)JS";
 }
 
+const char* releaseNoticeV2070Addendum() {
+    return R"JS(<script>const releaseBox2070=document.querySelector('[role="dialog"]');if(releaseBox2070){releaseBox2070.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Cross-platform runtime adapters · v2.0.70</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">The web server now routes sockets, secure temporary files, Python process launch, executable paths, environment cleanup, and secure random bytes through Windows, Linux, and macOS adapters. Python analysis is launched without a shell, and temporary analysis files are cleaned up on success or failure. Portfolio behavior and authenticated, read-only Stock API access are unchanged.</p>')}</script>)JS";
+}
+
 std::string releaseNoticeV2052Addendum() {
-    return std::string(R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS") + releaseNoticeV2053Addendum() + releaseNoticeV2054Addendum() + releaseNoticeV2055Addendum() + releaseNoticeV2056Addendum() + releaseNoticeV2057Addendum() + releaseNoticeV2058Addendum() + releaseNoticeV2059Addendum() + releaseNoticeV2060Addendum() + releaseNoticeV2061Addendum() + releaseNoticeV2062Addendum() + releaseNoticeV2063Addendum() + releaseNoticeV2064Addendum() + releaseNoticeV2065Addendum() + releaseNoticeV2066Addendum() + releaseNoticeV2067Addendum() + releaseNoticeV2068Addendum() + releaseNoticeV2069Addendum();
+    return std::string(R"JS(<script>const releaseBox2052=document.querySelector('[role="dialog"]');if(releaseBox2052){releaseBox2052.insertAdjacentHTML('beforeend','<h3 style="font:700 13px Arial,sans-serif;margin:12px 0 6px;color:#0d7774">Long-running session stability · v2.0.52</h3><p style="margin:6px 0 0;color:#47575d;font-size:13px">Fixed the dashboard session expiring exactly one hour after login, even during active use. Authenticated dashboard requests now renew the existing HttpOnly session cookie and slide the one-hour idle timeout. Inactive sessions still expire; Upstox credentials remain server-side.</p>')}</script>)JS") + releaseNoticeV2053Addendum() + releaseNoticeV2054Addendum() + releaseNoticeV2055Addendum() + releaseNoticeV2056Addendum() + releaseNoticeV2057Addendum() + releaseNoticeV2058Addendum() + releaseNoticeV2059Addendum() + releaseNoticeV2060Addendum() + releaseNoticeV2061Addendum() + releaseNoticeV2062Addendum() + releaseNoticeV2063Addendum() + releaseNoticeV2064Addendum() + releaseNoticeV2065Addendum() + releaseNoticeV2066Addendum() + releaseNoticeV2067Addendum() + releaseNoticeV2068Addendum() + releaseNoticeV2069Addendum() + releaseNoticeV2070Addendum();
 }
 
 const char* dashboardSessionRecovery() {
@@ -1255,16 +1254,16 @@ std::string urlDecode(const std::string& value) {
     return decoded;
 }
 
-bool sendAll(int socket, const std::string& payload) {
+bool sendAll(platform::SocketHandle socket, const std::string& payload) {
     std::size_t sent = 0;
     while (sent < payload.size()) {
-        const ssize_t count = send(socket, payload.data() + sent,
-                                   payload.size() - sent, MSG_NOSIGNAL);
+        const std::ptrdiff_t count = platform::writeSocket(
+            socket, payload.data() + sent, payload.size() - sent);
         if (count > 0) {
             sent += static_cast<std::size_t>(count);
             continue;
         }
-        if (count < 0 && errno == EINTR) continue;
+        if (count < 0 && platform::socketOperationInterrupted()) continue;
         return false;
     }
     return true;
@@ -1321,14 +1320,25 @@ bool validAnalysisSymbol(const std::string& symbol) {
 }
 
 std::string secureTemporaryPath(const std::string& prefix) {
-    std::string templatePath = "/tmp/" + prefix + "XXXXXX";
-    std::vector<char> writable(templatePath.begin(), templatePath.end());
-    writable.push_back('\0');
-    const int descriptor = mkstemp(writable.data());
-    if (descriptor < 0) throw std::runtime_error("cannot create secure temporary file");
-    close(descriptor);
-    return writable.data();
+    return platform::createSecureTemporaryFile(prefix);
 }
+
+class TemporaryFile {
+public:
+    explicit TemporaryFile(const std::string& prefix)
+        : path_(secureTemporaryPath(prefix)) {}
+    ~TemporaryFile() {
+        std::error_code error;
+        if (!std::filesystem::remove(std::filesystem::u8path(path_), error) && error) {
+            std::cerr << "Warning: cannot remove temporary analysis file: "
+                      << error.message() << "\n";
+        }
+    }
+    const std::string& path() const { return path_; }
+
+private:
+    std::string path_;
+};
 
 std::vector<double> closePrices(const std::string& encodedCloses) {
     std::vector<double> closes;
@@ -1414,11 +1424,9 @@ std::filesystem::path projectRoot() {
         std::filesystem::absolute("."),
         std::filesystem::weakly_canonical(std::filesystem::path("."))
     };
-    const auto procExe = std::filesystem::exists("/proc/self/exe")
-        ? std::filesystem::canonical("/proc/self/exe")
-        : std::filesystem::path();
-    if (!procExe.empty()) {
-        const auto procDir = procExe.parent_path();
+    const auto executable = platform::executablePath();
+    if (!executable.empty()) {
+        const auto procDir = executable.parent_path();
         if (!procDir.empty()) roots.push_back(procDir);
     }
     for (const auto& root : roots) {
@@ -1439,9 +1447,9 @@ std::string projectPythonScript() {
         std::filesystem::absolute("stock_alert_nlp.py")
     };
     for (const auto& candidate : candidates) {
-        if (std::filesystem::exists(candidate)) return candidate.string();
+        if (std::filesystem::exists(candidate)) return candidate.u8string();
     }
-    return (root / "stock_alert_nlp.py").string();
+    return (root / "stock_alert_nlp.py").u8string();
 }
 
 std::string WebServer::stockAnalysis(const std::string& symbol) const {
@@ -1472,26 +1480,24 @@ std::string WebServer::stockAnalysis(const std::string& symbol) const {
     const auto fundamentals = client_.getFundamentals(isin);
 
     const auto root = projectRoot();
-    const std::string inputPath = secureTemporaryPath("baran_capital_view_stock_");
-    const std::string outputPath = secureTemporaryPath("baran_capital_view_stock_");
+    const TemporaryFile inputFile("baran_capital_view_stock_");
+    const TemporaryFile outputFile("baran_capital_view_stock_");
+    const std::string& inputPath = inputFile.path();
+    const std::string& outputPath = outputFile.path();
     const auto holdingsFile = (root / "config" / "holding.csv").string();
     {
-        std::ofstream input(inputPath);
+        std::ofstream input(std::filesystem::u8path(inputPath));
         if (!input) throw std::runtime_error("cannot create Python input file");
         input << "symbol,name\n" << symbol << ",\n";
     }
-    const std::string command = "python3 \"" + scriptPath + "\" \"" + inputPath + "\" \"" +
-        outputPath + "\" --json > /dev/null 2>&1";
-    const int exitCode = std::system(command.c_str());
-    std::remove(inputPath.c_str());
+    const int exitCode = platform::runPython(
+        scriptPath, {inputPath, outputPath, "--json"}, true);
     if (exitCode != 0) {
-        std::remove(outputPath.c_str());
         throw std::runtime_error("stock_alert_nlp.py failed; check config/news_config.json");
     }
-    std::ifstream resultFile(outputPath);
+    std::ifstream resultFile(std::filesystem::u8path(outputPath));
     std::ostringstream resultText;
     resultText << resultFile.rdbuf();
-    std::remove(outputPath.c_str());
     const json pythonResults = json::parse(resultText.str());
     const json python = pythonResults.empty() ? json::object() : pythonResults.front();
 
@@ -1598,29 +1604,27 @@ std::string WebServer::runDeeperAnalysis() const {
     }
     const auto analysisSymbols = uniqueAnalysisSymbols(liveSymbols);
 
-    const std::string inputPath = secureTemporaryPath("baran_capital_view_live_");
-    const std::string outputPath = secureTemporaryPath("baran_capital_view_nlp_");
+    const TemporaryFile inputFile("baran_capital_view_live_");
+    const TemporaryFile outputFile("baran_capital_view_nlp_");
+    const std::string& inputPath = inputFile.path();
+    const std::string& outputPath = outputFile.path();
     const std::string scriptPath = projectPythonScript();
     {
-        std::ofstream liveHoldings(inputPath);
+        std::ofstream liveHoldings(std::filesystem::u8path(inputPath));
         if (!liveHoldings) throw std::runtime_error("cannot create live holdings input file");
         liveHoldings << "symbol,name\n";
         for (const auto& symbol : analysisSymbols) liveHoldings << symbol << ",\n";
     }
-    const std::string command = "python3 \"" + scriptPath + "\" \"" + inputPath + "\" \"" +
-        outputPath + "\" --json";
-    const int exitCode = std::system(command.c_str());
-    std::remove(inputPath.c_str());
+    const int exitCode = platform::runPython(
+        scriptPath, {inputPath, outputPath, "--json"}, false);
     if (exitCode != 0) {
-        std::remove(outputPath.c_str());
         throw std::runtime_error("stock_alert_nlp.py failed; check config/news_config.json");
     }
 
     std::unordered_map<std::string, std::string> recommendations;
-    std::ifstream resultFile(outputPath);
+    std::ifstream resultFile(std::filesystem::u8path(outputPath));
     std::ostringstream resultText;
     resultText << resultFile.rdbuf();
-    std::remove(outputPath.c_str());
     if (resultText.str().empty()) {
         throw std::runtime_error("stock_alert_nlp.py returned no analysis results");
     }
@@ -2026,17 +2030,17 @@ std::shared_ptr<const WebServer::Snapshot> WebServer::snapshot(bool forceRefresh
 }
 
 int WebServer::run() {
-    const int server = socket(AF_INET, SOCK_STREAM, 0);
-    if (server < 0) { std::cerr << "Cannot create web server socket: " << std::strerror(errno) << "\n"; return 1; }
-    int reuse = 1;
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    address.sin_port = htons(static_cast<uint16_t>(port_));
-    if (bind(server, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0 || listen(server, 8) < 0) {
-        std::cerr << "Cannot start web server on 127.0.0.1:" << port_ << ": " << std::strerror(errno) << "\n";
-        close(server); return 1;
+    std::string networkError;
+    if (!platform::initializeNetworking(networkError)) {
+        std::cerr << "Cannot initialize web server networking: " << networkError << "\n";
+        return 1;
+    }
+    const platform::SocketHandle server = platform::createLoopbackServer(
+        static_cast<std::uint16_t>(port_), networkError);
+    if (server == platform::invalidSocket) {
+        std::cerr << "Cannot start web server on 127.0.0.1:" << port_
+                  << ": " << networkError << "\n";
+        return 1;
     }
     std::cout << "Portfolio web UI v" << PORTFOLIO_HEALTH_VERSION
               << ": http://127.0.0.1:" << port_
@@ -2044,8 +2048,8 @@ int WebServer::run() {
     constexpr std::size_t maxConcurrentConnections = 8;
     std::atomic<std::size_t> activeConnections{0};
     while (true) {
-        const int connection = accept(server, nullptr, nullptr);
-        if (connection < 0) continue;
+        const platform::SocketHandle connection = platform::acceptConnection(server);
+        if (connection == platform::invalidSocket) continue;
         if (activeConnections.fetch_add(1, std::memory_order_acq_rel) >=
             maxConcurrentConnections) {
             activeConnections.fetch_sub(1, std::memory_order_acq_rel);
@@ -2053,21 +2057,18 @@ int WebServer::run() {
                 "503 Service Unavailable",
                 "{\"error\":\"server busy; retry shortly\"}");
             sendAll(connection, output);
-            close(connection);
+            platform::closeSocket(connection);
             continue;
         }
         try {
             std::thread([this, connection, &activeConnections]() {
               try {
                 do {
-        const timeval socketTimeout{5, 0};
-        setsockopt(connection, SOL_SOCKET, SO_RCVTIMEO,
-               &socketTimeout, sizeof(socketTimeout));
-        setsockopt(connection, SOL_SOCKET, SO_SNDTIMEO,
-               &socketTimeout, sizeof(socketTimeout));
+        platform::setSocketTimeouts(connection, 5);
         char buffer[4096]{};
-        const ssize_t bytes = read(connection, buffer, sizeof(buffer) - 1);
-        if (bytes <= 0) { close(connection); continue; }
+        const std::ptrdiff_t bytes = platform::readSocket(
+            connection, buffer, sizeof(buffer) - 1);
+        if (bytes <= 0) { platform::closeSocket(connection); continue; }
         std::istringstream request(std::string(buffer, static_cast<std::size_t>(bytes)));
         std::string method, path, version;
         request >> method >> path >> version;
@@ -2089,14 +2090,14 @@ int WebServer::run() {
                 const std::string output = responseWithStatus(
                     "200 OK", html, "text/html");
                 sendAll(connection, output);
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (path == "/api/login") {
                 if (method != "POST") {
                     const std::string output = responseWithStatus(
                         "405 Method Not Allowed", "{\"error\":\"POST required\"}",
                         "application/json", "Allow: POST\r\n");
                     sendAll(connection, output);
-                    close(connection); continue;
+                    platform::closeSocket(connection); continue;
                 }
                 const std::string configuredCode = configuredLoginCode();
                 const std::string submittedCode = formValue(requestBody, "code");
@@ -2120,7 +2121,7 @@ int WebServer::run() {
                         "401 Unauthorized", "{\"error\":\"invalid code\"}");
                     sendAll(connection, output);
                 }
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (path == "/api/logout" && method == "POST") {
                 removeSession(requestText);
                 const std::string cookie =
@@ -2129,7 +2130,7 @@ int WebServer::run() {
                     "303 See Other", {}, "application/json",
                     cookie + "Location: /login\r\n");
                 sendAll(connection, output);
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (path == "/logout" && method == "GET") {
                 removeSession(requestText);
                 const std::string cookie =
@@ -2138,12 +2139,12 @@ int WebServer::run() {
                     "303 See Other", {}, "text/plain",
                     cookie + "Location: /login\r\n");
                 sendAll(connection, output);
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (!authenticated(requestText)) {
                 const std::string output = responseWithStatus(
                     "303 See Other", {}, "text/plain", "Location: /login\r\n");
                 sendAll(connection, output);
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (method != "GET") {
                 body = "{\"error\":\"GET required\"}";
                 responseStatus = "405 Method Not Allowed";
@@ -2157,7 +2158,7 @@ int WebServer::run() {
                     "; Max-Age=3600; HttpOnly; SameSite=Strict; Path=/\r\n";
                 const std::string head = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: " + std::to_string(html.size()) + "\r\nConnection: close\r\n" + sessionCookie + "\r\n";
                 sendAll(connection, head + html);
-                close(connection); continue;
+                platform::closeSocket(connection); continue;
             } else if (path == "/api/session") {
                 body = json({{"status", "ready"}}).dump();
             } else if (path == "/api/market-holidays") {
@@ -2360,7 +2361,7 @@ int WebServer::run() {
                         const std::string output = response(
                             body, "text/plain; version=0.0.4", sessionCookie);
                         sendAll(connection, output);
-                        close(connection); continue;
+                        platform::closeSocket(connection); continue;
                     }
                 } catch (const std::exception& e) {
                     const bool staleToken = isAccessTokenStale(e.what());
@@ -2390,10 +2391,10 @@ int WebServer::run() {
         const std::string output = responseWithStatus(
             responseStatus, body, "application/json", allowHeader + sessionCookie);
         sendAll(connection, output);
-        close(connection);
+        platform::closeSocket(connection);
                 } while (false);
               } catch (...) {
-                close(connection);
+                platform::closeSocket(connection);
               }
               activeConnections.fetch_sub(1, std::memory_order_acq_rel);
             }).detach();
@@ -2403,7 +2404,7 @@ int WebServer::run() {
                 "503 Service Unavailable",
                 "{\"error\":\"server busy; retry shortly\"}");
             sendAll(connection, output);
-            close(connection);
+            platform::closeSocket(connection);
         }
     }
 }

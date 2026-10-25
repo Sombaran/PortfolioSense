@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.69
+Version: 2.0.70
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -12,9 +12,12 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - Upstox market-holiday and special-session awareness in the IST market status
 - Python-backed Deeper analysis for recent company/news context and recommendations
 - Browser UI for overview, news, alerts, analysis, fundamentals, and an Operations workspace
+- Native platform adapters for Windows, Linux, and macOS runtime operations
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.70 release notes](design/RELEASE_NOTES_V2.0.70.md)** — add cross-platform adapters and launch Python analysis without a shell
+- **[v2.0.70 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.70.md)** — isolate OS-specific runtime operations and preserve the authenticated, read-only Stock API boundary
 - **[v2.0.69 release notes](design/RELEASE_NOTES_V2.0.69.md)** — explicit holiday API failure statuses, stale-calendar visibility, and accessible dashboard loading state
 - **[v2.0.69 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.69.md)** — closed the remaining partial HTTP/UI feedback gaps
 - **[v2.0.68 release notes](design/RELEASE_NOTES_V2.0.68.md)** — fix scheduler races, correct HTTP statuses, harden login sessions, and disable success-shaped stubs
@@ -64,9 +67,17 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.69
+Current release: 2.0.70
 
-Last updated: October 17, 2026
+Last updated: October 25, 2026
+
+Version 2.0.70 adds Windows, Linux, and macOS adapters for sockets, secure
+temporary files, Python process launching, executable-path discovery,
+environment cleanup, and operating-system randomness. Python analysis is
+started without a shell, and temporary analysis files are removed on success
+or failure. The portfolio/business logic and authenticated, read-only Upstox
+API behavior remain unchanged. The post-login popup summarizes the update.
+See the v2.0.70 release notes and implementation summary for details.
 
 Version 2.0.69 makes the market-holiday endpoint return HTTP 502 with an
 explicit error payload when no valid calendar cache exists. A cached calendar

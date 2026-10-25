@@ -30,12 +30,19 @@ brew install cmake curl
 
 ```powershell
 vcpkg install curl
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 cmake --build build --config Release
 ```
 
 `nlohmann/json` ships in-tree (`third_party/nlohmann/json.hpp`), so
 nothing else is required.
+
+CMake selects the native runtime adapter from `adapters/windows`,
+`adapters/linux`, or `adapters/macos`. The Bash-based `run.sh` and
+`buildCode.sh` helpers are intended for Linux/macOS; on Windows, use CMake
+directly and run the resulting executable from the project directory. Python
+must be available on `PATH` for the Python-backed analysis (`python.exe` on
+Windows, `python3` on Linux/macOS).
 
 ---
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(portfolio_health VERSION 2.0.69 LANGUAGES CXX)
+project(portfolio_health VERSION 2.0.70 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PORTFOLIO_HEALTH_ENABLE_IPO "Enable interprocedural optimization" OFF)
@@ -44,12 +44,25 @@ set(PORTFOLIO_HEALTH_CORE_SOURCES
   src/TaskScheduler.cpp
 )
 
+if(WIN32)
+  set(PORTFOLIO_HEALTH_PLATFORM_ADAPTER adapters/windows/PlatformAdapter.cpp)
+elseif(APPLE)
+  set(PORTFOLIO_HEALTH_PLATFORM_ADAPTER adapters/macos/PlatformAdapter.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(PORTFOLIO_HEALTH_PLATFORM_ADAPTER adapters/linux/PlatformAdapter.cpp)
+else()
+  message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif()
+
 add_library(portfolio_health_core SHARED
   ${PORTFOLIO_HEALTH_CORE_SOURCES}
+  ${PORTFOLIO_HEALTH_PLATFORM_ADAPTER}
 )
+set_target_properties(portfolio_health_core PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(portfolio_health_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/adapters/include
 )
 
 target_compile_definitions(portfolio_health_core
@@ -62,6 +75,10 @@ target_link_libraries(portfolio_health_core
     nlohmann_json::nlohmann_json
     Threads::Threads
 )
+
+if(WIN32)
+  target_link_libraries(portfolio_health_core PUBLIC ws2_32 bcrypt)
+endif()
 
 # Link OpenSSL if available
 if(OpenSSL_FOUND)
@@ -79,6 +96,9 @@ endif()
 
 add_executable(portfolio_health
   src/main.cpp
+)
+target_include_directories(portfolio_health PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/adapters/include
 )
 
 target_link_libraries(portfolio_health
@@ -149,7 +169,9 @@ if(BUILD_TESTING)
   )
 
   target_include_directories(portfolio_health_tests
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/include
+      ${CMAKE_CURRENT_SOURCE_DIR}/adapters/include
   )
 
   target_link_libraries(portfolio_health_tests

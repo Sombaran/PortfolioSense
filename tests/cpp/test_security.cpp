@@ -23,6 +23,7 @@
 #include "UpstoxClient.hpp"
 #include "WebServer.hpp"
 #include "StreamingClient.hpp"
+#include "PlatformAdapter.hpp"
 
 namespace {
 
@@ -239,6 +240,44 @@ TEST(SecurityUtils, RandomStringFallbackGeneratesHexPayload) {
     EXPECT_TRUE(std::all_of(value.begin(), value.end(), [](char ch) {
         return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f');
     }));
+}
+
+TEST(PlatformAdapter, SecureTemporaryFilesAreUniqueAndPrivate) {
+    const std::string first = folio::platform::createSecureTemporaryFile("folio_test_");
+    const std::string second = folio::platform::createSecureTemporaryFile("folio_test_");
+    EXPECT_NE(first, second);
+    EXPECT_TRUE(std::filesystem::is_regular_file(std::filesystem::u8path(first)));
+    EXPECT_TRUE(std::filesystem::is_regular_file(std::filesystem::u8path(second)));
+#ifndef _WIN32
+    EXPECT_TRUE(folio::platform::checkFilePermissions(first, 0600));
+#endif
+    std::filesystem::remove(std::filesystem::u8path(first));
+    std::filesystem::remove(std::filesystem::u8path(second));
+}
+
+TEST(PlatformAdapter, SecureRandomBytesHasRequestedLength) {
+    std::string bytes;
+    ASSERT_TRUE(folio::platform::secureRandomBytes(32, bytes));
+    EXPECT_EQ(bytes.size(), 32u);
+}
+
+TEST(PlatformAdapter, AtomicReplacementReplacesExistingFile) {
+    const std::string destination =
+        folio::platform::createSecureTemporaryFile("folio_destination_");
+    const std::string temporary =
+        folio::platform::createSecureTemporaryFile("folio_replacement_");
+    {
+        std::ofstream output(std::filesystem::u8path(temporary), std::ios::trunc);
+        ASSERT_TRUE(output);
+        output << "replacement";
+    }
+
+    EXPECT_NO_THROW(folio::platform::replaceFileAtomically(temporary, destination));
+    std::ifstream input(std::filesystem::u8path(destination));
+    std::string contents;
+    input >> contents;
+    EXPECT_EQ(contents, "replacement");
+    std::filesystem::remove(std::filesystem::u8path(destination));
 }
 
 TEST(Position, MarketValuePrefersBrokerReportedValue) {

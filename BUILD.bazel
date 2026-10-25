@@ -16,9 +16,10 @@ cc_library(
         "src/NotificationService.cpp",
         "src/SecureUtils.cpp",
         "src/TaskScheduler.cpp",
+        "adapters/linux/PlatformAdapter.cpp",
     ],
-    hdrs = glob(["include/*.hpp"]),
-    includes = ["include"],
+    hdrs = glob(["include/*.hpp", "adapters/include/*.hpp"]),
+    includes = ["include", "adapters/include"],
     deps = ["@nlohmann_json//:json"],
     copts = [
         "-std=c++17",

@@ -28,13 +28,13 @@
 #include "PortfolioLoader.hpp"
 #include "UpstoxClient.hpp"
 #include "WebServer.hpp"
+#include "PlatformAdapter.hpp"
 
 #include <nlohmann/json.hpp>
 
-#include <unistd.h>
-
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -348,8 +348,22 @@ void updateHoldingCsv(const std::string& path,
 
     std::unordered_map<std::string, const Position*> latest;
     for (const auto& holding : holdings) latest[holding.tradingSymbol] = &holding;
-    const std::string temporary = path + ".tmp." + std::to_string(static_cast<long long>(getpid()));
-    std::ofstream output(temporary);
+    const std::filesystem::path destination(path);
+    const auto temporaryDirectory = destination.parent_path().empty()
+        ? std::filesystem::current_path() : destination.parent_path();
+    const std::string temporary = folio::platform::createSecureTemporaryFile(
+        destination.filename().string() + ".tmp_", temporaryDirectory);
+    struct TemporaryCleanup {
+        std::string path;
+        ~TemporaryCleanup() {
+            std::error_code error;
+            if (!std::filesystem::remove(std::filesystem::u8path(path), error) && error) {
+                std::cerr << "Warning: cannot remove temporary holdings file: "
+                          << error.message() << "\n";
+            }
+        }
+    } cleanup{temporary};
+    std::ofstream output(std::filesystem::u8path(temporary));
     if (!output) throw std::runtime_error("Cannot create temporary holdings CSV");
     output << headerLine << '\n' << std::fixed << std::setprecision(2);
     std::string line;
@@ -375,10 +389,7 @@ void updateHoldingCsv(const std::string& path,
         output << '\n';
     }
     output.close();
-    if (std::rename(temporary.c_str(), path.c_str()) != 0) {
-        std::remove(temporary.c_str());
-        throw std::runtime_error("Cannot replace holdings CSV: " + path);
-    }
+    folio::platform::replaceFileAtomically(temporary, path);
 }
 
 } // namespace

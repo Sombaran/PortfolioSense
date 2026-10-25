@@ -1,0 +1,1 @@
+#include "../posix/PlatformAdapter.inc"

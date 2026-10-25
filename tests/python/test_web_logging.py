@@ -491,7 +491,8 @@ def test_deeper_analysis_deduplicates_symbols_and_keeps_ui_categories_consistent
     )[0]
 
     assert "uniqueAnalysisSymbols(liveSymbols)" in analysis
-    assert 'outputPath + "\\" --json"' in analysis
+    assert 'platform::runPython(' in analysis
+    assert '{inputPath, outputPath, "--json"}, false' in analysis
     assert "json::parse(resultText.str())" in analysis
     assert 'recommendations.emplace(symbol, recommendation)' in analysis
     assert '\"category\", category' in analysis
@@ -559,11 +560,17 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.69" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.69"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.69"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.69" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.69`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.70" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.70"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.70"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.70" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.70`" in (root / "design" / "README.md").read_text()
+    release70 = (root / "design" / "RELEASE_NOTES_V2.0.70.md").read_text()
+    assert "Windows, Linux, and macOS" in release70
+    assert "login popup" in release70
+    implementation70 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.70.md").read_text()
+    assert "CreateProcessW" in implementation70
+    assert "argument-based process creation" in implementation70
     release69 = (root / "design" / "RELEASE_NOTES_V2.0.69.md").read_text()
     assert "HTTP 502" in release69
     assert "login popup" in release69
@@ -582,6 +589,8 @@ def test_patch_release_version_is_aligned_across_build_and_readmes():
     assert "releaseNoticeV2068Addendum() + releaseNoticeV2069Addendum()" in source
     assert "releaseNoticeV2069Addendum()" in source
     assert "Dashboard reliability and API error clarity · v2.0.69" in source
+    assert "releaseNoticeV2069Addendum() + releaseNoticeV2070Addendum()" in source
+    assert "Cross-platform runtime adapters · v2.0.70" in source
     assert "releaseNoticeV2052Addendum()" in source.split("html.replace(", 1)[1].split(
         "marker);", 1
     )[0]

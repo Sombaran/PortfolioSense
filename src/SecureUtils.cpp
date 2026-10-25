@@ -1,4 +1,5 @@
 #include "SecureUtils.hpp"
+#include "PlatformAdapter.hpp"
 #include <nlohmann/json.hpp>
 #include <iomanip>
 #include <sstream>
@@ -8,7 +9,6 @@
 #include <array>
 #include <random>
 #include <set>
-#include <sys/stat.h>
 
 #ifdef HAVE_OPENSSL
 #include <openssl/aes.h>
@@ -473,32 +473,14 @@ SecureString getEnvSecure(const std::string& varName) {
 
     SecureString result(value);
 
-    // Attempt to clear environment variable (platform-specific)
-#ifdef __linux__
-    unsetenv(varName.c_str());
-#elif _WIN32
-    _putenv_s(varName.c_str(), "");
-#endif
+    platform::clearEnvironmentVariable(varName);
 
     return result;
 }
 
 bool checkFilePermissions(const std::string& filePath,
                          unsigned int expectedMode) {
-#ifdef __linux__
-    struct stat fileStat;
-    if (stat(filePath.c_str(), &fileStat) != 0) {
-        return false;  // File doesn't exist or can't be accessed
-    }
-
-    // Check if permissions match expected mode (mask with 0777)
-    unsigned int actualMode = fileStat.st_mode & 0777;
-    return actualMode == expectedMode;
-#else
-    // On Windows or other platforms, consider this check passed
-    // (Windows doesn't use Unix-style file permissions)
-    return true;
-#endif
+    return platform::checkFilePermissions(filePath, expectedMode);
 }
 
 std::string generateRandomString(size_t length) {
@@ -507,11 +489,8 @@ std::string generateRandomString(size_t length) {
         return "";
     }
 
-    std::string bytes(length, '\0');
-    std::ifstream randomSource("/dev/urandom", std::ios::binary);
-    if (!randomSource.read(bytes.data(), static_cast<std::streamsize>(bytes.size()))) {
-        return "";
-    }
+    std::string bytes;
+    if (!platform::secureRandomBytes(length, bytes)) return "";
 
     std::ostringstream ss;
     ss << std::hex << std::setfill('0');
