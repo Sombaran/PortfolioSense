@@ -130,6 +130,24 @@ std::ptrdiff_t writeSocket(SocketHandle socket, const char* data, std::size_t si
     return ::send(socket, data, boundedSize, 0);
 }
 
+int waitForSocket(SocketHandle socket, bool waitForWrite, unsigned int timeoutMilliseconds) {
+    fd_set readSet;
+    fd_set writeSet;
+    fd_set errorSet;
+    FD_ZERO(&readSet);
+    FD_ZERO(&writeSet);
+    FD_ZERO(&errorSet);
+    FD_SET(socket, waitForWrite ? &writeSet : &readSet);
+    FD_SET(socket, &errorSet);
+
+    timeval timeout{};
+    timeout.tv_sec = static_cast<long>(timeoutMilliseconds / 1000);
+    timeout.tv_usec = static_cast<long>((timeoutMilliseconds % 1000) * 1000);
+    const int result = ::select(0, &readSet, &writeSet, &errorSet, &timeout);
+    if (result == SOCKET_ERROR || FD_ISSET(socket, &errorSet)) return -1;
+    return result == 0 ? 0 : 1;
+}
+
 bool socketOperationInterrupted() {
     return WSAGetLastError() == WSAEINTR;
 }
@@ -231,8 +249,8 @@ int runPython(const std::string& script, const std::vector<std::string>& argumen
     std::vector<wchar_t> mutableCommand(commandLine.begin(), commandLine.end());
     mutableCommand.push_back(L'\0');
 
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(startup);
+    STARTUPINFOEXW startup{};
+    startup.StartupInfo.cb = sizeof(startup);
     HANDLE nullHandle = INVALID_HANDLE_VALUE;
     std::vector<unsigned char> attributeStorage;
     bool attributesInitialized = false;
@@ -269,7 +287,6 @@ int runPython(const std::string& script, const std::vector<std::string>& argumen
             CloseHandle(nullHandle);
             throw std::runtime_error(windowsError("UpdateProcThreadAttribute", error));
         }
-        startup.StartupInfo.cb = sizeof(startup);
         startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
         startup.StartupInfo.hStdInput = nullHandle;
         startup.StartupInfo.hStdOutput = nullHandle;

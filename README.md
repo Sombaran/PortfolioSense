@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.70
+Version: 2.0.71
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -16,6 +16,8 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.71 release notes](design/RELEASE_NOTES_V2.0.71.md)** — harden Windows build/launcher behavior and scope Python tests to project tests
+- **[v2.0.71 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.71.md)** — fix stale Windows builds, guard rebuild paths, and preserve read-only Stock API access
 - **[v2.0.70 release notes](design/RELEASE_NOTES_V2.0.70.md)** — add cross-platform adapters and launch Python analysis without a shell
 - **[v2.0.70 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.70.md)** — isolate OS-specific runtime operations and preserve the authenticated, read-only Stock API boundary
 - **[v2.0.69 release notes](design/RELEASE_NOTES_V2.0.69.md)** — explicit holiday API failure statuses, stale-calendar visibility, and accessible dashboard loading state
@@ -67,9 +69,17 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.70
+Current release: 2.0.71
 
-Last updated: October 25, 2026
+Last updated: October 26, 2026
+
+Version 2.0.71 hardens Windows build and launcher behavior: CMake launch now
+detects stale platform-adapter sources and missing core libraries, and rebuild
+refuses unsafe build-directory paths. Windows Python regression tests are scoped
+to `tests/python`, avoiding accidental collection from Bazel's generated
+dependencies. Linux build behavior is unchanged. The post-login popup
+summarizes the fix. Stock API access remains authenticated, read-only, and
+server-side; credentials and tokens are not exposed to browser code.
 
 Version 2.0.70 adds Windows, Linux, and macOS adapters for sockets, secure
 temporary files, Python process launching, executable-path discovery,

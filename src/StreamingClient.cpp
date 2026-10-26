@@ -2,6 +2,7 @@
 
 #include "HttpClient.hpp"
 #include "UpstoxClient.hpp"
+#include "PlatformAdapter.hpp"
 
 #include <curl/curl.h>
 #include <curl/websockets.h>
@@ -14,7 +15,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <poll.h>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -124,7 +124,7 @@ void parseLtpc(const std::string& payload, StreamingClient::Quote& quote) {
             if (field == 1) quote.lastPrice = value;
             else quote.close = value;
         } else if ((field == 2 || field == 3) && wire == 0) {
-            const auto value = static_cast<long>(reader.varint());
+            const auto value = static_cast<std::int64_t>(reader.varint());
             if (field == 2) quote.timestamp = value;
             else quote.volume = value;
         } else {
@@ -250,12 +250,9 @@ bool sendFrame(CURL* handle, const std::string& payload, unsigned flags,
             return false;
         }
 
-        pollfd descriptor{};
-        descriptor.fd = socket;
-        descriptor.events = POLLOUT;
-        const int ready = poll(&descriptor, 1, 250);
-        if (ready < 0 ||
-            (ready > 0 && (descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)))) {
+        const int ready = platform::waitForSocket(
+            static_cast<platform::SocketHandle>(socket), true, 250);
+        if (ready < 0) {
             error = "WebSocket send socket is unavailable";
             return false;
         }
@@ -263,7 +260,6 @@ bool sendFrame(CURL* handle, const std::string& payload, unsigned flags,
             continue;
         }
         if (ready == 0) continue;
-        if (result == CURLE_AGAIN && (descriptor.revents & POLLOUT) == 0) continue;
         if (result == CURLE_OK && sent == 0) {
             error = "WebSocket send made no progress";
             return false;
@@ -609,17 +605,12 @@ void StreamingClient::run() {
                         }
                     }
 
-                    pollfd descriptor{};
-                    descriptor.fd = socket;
-                    descriptor.events = POLLIN;
-                    const int ready = poll(&descriptor, 1, 1000);
+                    const int ready = platform::waitForSocket(
+                        static_cast<platform::SocketHandle>(socket), false, 1000);
                     if (ready < 0) {
                         throw std::runtime_error("market feed socket polling failed");
                     }
                     if (ready == 0) continue;
-                    if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) != 0) {
-                        throw std::runtime_error("market feed WebSocket disconnected");
-                    }
 
                     for (;;) {
                         std::size_t received = 0;

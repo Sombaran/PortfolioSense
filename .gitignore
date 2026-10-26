@@ -18,10 +18,13 @@ MODULE.bazel.lock
 
 # Tooling / IDE state
 *.patch
+!/googletest_bazel9.patch
+!/nlohmann_json_bazel9.patch
 .bazel-cache/
 .bazelisk/
 .bazelrc.local
 bazel-*
+build_support/vcpkg_curl/
 
 # Environment files
 .env/
@@ -29,8 +32,10 @@ bazel-*
 
 # Build artifacts
 build/
+build-windows/
 builds/
 build-coverage
+build-coverage-windows/
 dist/
 *.egg-info/
 

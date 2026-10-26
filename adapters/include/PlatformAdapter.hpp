@@ -25,6 +25,7 @@ SocketHandle createLoopbackServer(std::uint16_t port, std::string& error);
 SocketHandle acceptConnection(SocketHandle server);
 std::ptrdiff_t readSocket(SocketHandle socket, char* buffer, std::size_t size);
 std::ptrdiff_t writeSocket(SocketHandle socket, const char* data, std::size_t size);
+int waitForSocket(SocketHandle socket, bool waitForWrite, unsigned int timeoutMilliseconds);
 bool socketOperationInterrupted();
 void setSocketTimeouts(SocketHandle socket, unsigned int seconds);
 void closeSocket(SocketHandle socket);

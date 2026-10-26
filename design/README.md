@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.70`
+**Version:** `2.0.71`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -78,6 +78,8 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.71](RELEASE_NOTES_V2.0.71.md)** — harden Windows build/launcher behavior and scope project Python tests
+- **[Implementation Summary v2.0.71](IMPLEMENTATION_SUMMARY_V2.0.71.md)** — root cause, safe rebuild boundaries, and preserved Stock API security
 - **[Release Notes v2.0.70](RELEASE_NOTES_V2.0.70.md)** — Windows, Linux, and macOS runtime adapters; shell-free Python analysis invocation
 - **[Implementation Summary v2.0.70](IMPLEMENTATION_SUMMARY_V2.0.70.md)** — platform operation boundaries, security hardening, and preserved Stock API behavior
 - **[Release Notes v2.0.69](RELEASE_NOTES_V2.0.69.md)** — explicit holiday API failure statuses, stale-calendar visibility, and accessible dashboard loading state
@@ -176,6 +178,7 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.71` — Fix Windows launcher stale-build detection by tracking platform adapters and the core DLL; reject rebuild paths outside the project or containing reparse points; scope Python regression tests to `tests/python` to avoid Bazel external-workspace collection; preserve Linux behavior and authenticated read-only Stock API access; summarize the fix in the post-login popup.
 - `2.0.70` — Add platform-specific adapters for Windows, Linux, and macOS socket, temp-file, executable path, process, environment, and secure-random operations; invoke Python with argument arrays rather than shell command strings; clean up temporary analysis files on exceptions; retain portfolio logic and authenticated, read-only Upstox behavior; summarize changes in the post-login popup.
 - `2.0.69` — Return HTTP 502 with an explicit error payload when Upstox holiday data is unavailable and there is no valid cached calendar; mark retained calendars stale and identify estimated regular hours in the market-status tooltip; expose loading state and discard stale responses/cache updates across dashboard views; preserve read-only broker access and server-side credentials; summarize the changes in the post-login popup.
 
@@ -667,7 +670,9 @@ baran-capital-view/
 
 **How do I enter my portfolio?** Edit `config/my_portfolio.csv` (6 example stocks included).
 
-**Windows?** Use WSL2, or build with MSVC — `CMakeLists.txt` supports it.
+**Windows?** Native MSYS2 UCRT64 and MSVC builds are supported; see
+[the Windows build steps](../docs/RunSteps.md#windows-msys2-ucrt64). WSL2 is
+also supported.
 
 **Token expired?** Tokens are valid until 03:30 IST the next day. This application does not refresh tokens; obtain a replacement through Upstox and update `UPSTOX_ACCESS_TOKEN`. See [token setup](../docs/UPSTOX_TOKEN_SETUP.txt).
 

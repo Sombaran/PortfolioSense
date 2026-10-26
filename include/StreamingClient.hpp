@@ -1,6 +1,7 @@
 #ifndef FOLIO_STREAMING_CLIENT_HPP
 #define FOLIO_STREAMING_CLIENT_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
@@ -38,9 +39,9 @@ public:
         double high = 0.0;
         double low = 0.0;
         double close = 0.0;
-        long volume = 0;
-        long oiValue = 0;
-        long timestamp = 0;
+        std::int64_t volume = 0;
+        std::int64_t oiValue = 0;
+        std::int64_t timestamp = 0;
     };
 
     struct DepthData {

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -276,6 +277,7 @@ TEST(PlatformAdapter, AtomicReplacementReplacesExistingFile) {
     std::ifstream input(std::filesystem::u8path(destination));
     std::string contents;
     input >> contents;
+    input.close();
     EXPECT_EQ(contents, "replacement");
     std::filesystem::remove(std::filesystem::u8path(destination));
 }
@@ -450,7 +452,9 @@ TEST(OrdersAPI, SimulateAndPlaceSecurityValidatedOrders) {
 }
 
 TEST(NotificationService, SendAlertQueuesNotification) {
-    folio::NotificationService service({});
+    folio::NotificationService::NotificationConfig config;
+    config.quietHoursEnabled = false;
+    folio::NotificationService service(config);
     folio::NotificationService::Notification note;
     note.type = folio::NotificationService::AlertType::PRICE_ALERT;
     note.title = "Test price alert";

@@ -26,23 +26,80 @@ sudo dnf install -y gcc-c++ cmake libcurl-devel
 brew install cmake curl
 ```
 
-### Windows (MSVC + vcpkg)
+### Windows (MSYS2 UCRT64)
 
-```powershell
-vcpkg install curl
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
-cmake --build build --config Release
+Open the **UCRT64** terminal from MSYS2, then install the matching native
+toolchain and libraries:
+
+```bash
+pacman -S --needed mingw-w64-ucrt-x86_64-toolchain \
+  mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja \
+  mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-openssl \
+  mingw-w64-ucrt-x86_64-nlohmann-json mingw-w64-ucrt-x86_64-gtest
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/ucrt64 -DBUILD_TESTING=OFF
+cmake --build build
 ```
 
-`nlohmann/json` ships in-tree (`third_party/nlohmann/json.hpp`), so
-nothing else is required.
+The native Windows batch helper can run from Command Prompt or PowerShell.
+It uses MSYS2 UCRT64 CMake/Ninja for option 1; set `MSYS2_ROOT` if MSYS2 is
+installed somewhere other than `C:\msys64`:
+
+```bat
+buildCode.bat 1
+```
+
+CMake uses the MSYS2 compiler and installed UCRT64 packages directly, without
+Conan. GoogleTest is optional; install its UCRT64 package to build the C++
+tests. Five Python integration tests that spawn Bash are skipped on Windows;
+the Linux workflow continues to run the complete Python suite. The Bazel build
+uses the native Windows MSVC toolchain, so it also
+requires Visual Studio C++ Build Tools and an MSVC-compatible libcurl. The
+helper initializes the x64 MSVC environment automatically when Visual Studio
+is installed. When vcpkg is on `PATH`, configured in `VCPKG_ROOT`, or installed
+at `C:\vcpkg`, the helper installs curl in manifest mode if it is missing,
+including for vcpkg distributions that disable classic mode. Installed
+packages go under `%LOCALAPPDATA%\baran-capital-view\vcpkg\installed` by
+default, avoiding permission errors when vcpkg itself is under Visual Studio.
+The temporary manifest uses the vcpkg checkout commit or Visual Studio
+vcpkg bundle's embedded registry commit as `builtin-baseline`; set
+`VCPKG_BASELINE` only when your vcpkg instance needs a specific registry
+baseline. Set `VCPKG_INSTALL_ROOT` to choose another writable install
+location, `VCPKG_TRIPLET` to use a different triplet, or `CURL_ROOT` to use
+an existing triplet directory containing `include\curl\curl.h` and
+`lib\libcurl.lib`. Bazel or Bazelisk must be on `PATH`; alternatively, set
+`BAZEL_EXE` to its full executable path:
+
+```bat
+buildCode.bat 2
+```
+
+The Bazel module declares `platforms` directly for its OS-specific target
+selection. Checked-in Bazel 9 compatibility patches for GoogleTest and
+nlohmann/json load C++ rules through `rules_cc` and declare that dependency in
+each patched module, so the rules are resolvable from those modules.
+The Bazel batch helper stages vcpkg's curl headers and import library into the
+ignored `build_support/vcpkg_curl` workspace directory, where Bazel declares
+them as target inputs. This avoids passing external absolute paths to compiler
+and linker flags, which Bazel rejects outside the execution root.
+The current Bazel target produces `bazel-bin\portfolio_health.exe`; it does
+not define a project DLL target. The CMake build does create
+`libportfolio_health_core.dll` because that build declares the core as a shared
+library. With vcpkg's dynamic triplet, libcurl's own DLLs are runtime
+dependencies and are not the project's DLL output.
 
 CMake selects the native runtime adapter from `adapters/windows`,
 `adapters/linux`, or `adapters/macos`. The Bash-based `run.sh` and
-`buildCode.sh` helpers are intended for Linux/macOS; on Windows, use CMake
-directly and run the resulting executable from the project directory. Python
-must be available on `PATH` for the Python-backed analysis (`python.exe` on
-Windows, `python3` on Linux/macOS).
+`buildCode.sh` remains the Linux/macOS helper. Use `buildCode.bat` from
+Command Prompt or PowerShell on Windows. `run.bat` builds when the executable
+is missing or stale, then launches it and forwards command-line arguments.
+The CMake launcher also checks for the core DLL and watches platform-adapter
+sources when deciding whether to rebuild. `buildCode.bat --rebuild` only
+removes a build directory inside the project and refuses paths that cross a
+Windows reparse point. Python regression collection is limited to
+`tests\python`, so Bazel's generated dependency trees are not collected.
+Python must be available on `PATH` for the Python-backed analysis
+(`python.exe` on Windows, `python3` on Linux/macOS).
 
 ---
 
@@ -62,6 +119,28 @@ cd /home/ritup2404/baran-capital-view
 3. Local `config/my_portfolio.csv` if present (default when you first clone).
 4. `UPSTOX_ACCESS_TOKEN` → live account.
 5. Fallback: offline demo against `config/sample_positions.json`.
+
+On Windows, use the matching batch launcher from Command Prompt or PowerShell.
+It defaults to CMake. For `--web`, it automatically uses Bazel when Bazel or
+Bazelisk is available; use `--cmake` to force CMake or `--bazel` to force
+Bazel. The web server output is appended to the per-user log:
+
+```bat
+run.bat
+run.bat --web
+run.bat --cmake --web
+run.bat --portfolio config\my_portfolio.csv
+run.bat --rebuild --web
+```
+
+`run.bat` uses `build-windows\portfolio_health.exe` for CMake and
+`bazel-bin\portfolio_health.exe` for Bazel by default. Set `BUILD_DIR` or
+`BAZEL_BIN_DIR` to select another output directory. For Bazel, `VCPKG_ROOT` or
+`CURL_ROOT` must be set as described above so the libcurl runtime DLLs are on
+`PATH`. Web logs go to `%LOCALAPPDATA%\baran-capital-view\web-ui.log`; set
+`PORTFOLIO_WEB_LOG` to choose another path. Set `FOLIO_LOGIN_CODE`,
+`UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, and `UPSTOX_ACCESS_TOKEN` in the
+environment when needed.
 
 ### Option B — manual CMake
 

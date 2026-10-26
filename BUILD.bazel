@@ -1,4 +1,65 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library", "cc_test")
+
+exports_files([
+    "googletest_bazel9.patch",
+    "nlohmann_json_bazel9.patch",
+])
+
+filegroup(
+    name = "vcpkg_libcurl_file",
+    srcs = glob(["build_support/vcpkg_curl/lib/libcurl.lib"]),
+    visibility = ["//visibility:private"],
+)
+
+cc_import(
+    name = "vcpkg_libcurl",
+    hdrs = glob(["build_support/vcpkg_curl/include/curl/**"]),
+    interface_library = ":vcpkg_libcurl_file",
+    includes = ["build_support/vcpkg_curl/include"],
+    system_provided = True,
+    visibility = ["//visibility:private"],
+)
+
+_PLATFORM_ADAPTER = select({
+    "@platforms//os:windows": ["adapters/windows/PlatformAdapter.cpp"],
+    "@platforms//os:osx": ["adapters/macos/PlatformAdapter.cpp"],
+    "//conditions:default": ["adapters/linux/PlatformAdapter.cpp"],
+})
+
+_CXX_COPTS = select({
+    "@platforms//os:windows": [
+        "/std:c++17",
+        "/W4",
+        "/utf-8",
+        "/permissive-",
+    ],
+    "//conditions:default": [
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+    ],
+})
+
+_PLATFORM_LINKOPTS = select({
+    "@platforms//os:windows": [
+        "ws2_32.lib",
+        "bcrypt.lib",
+    ],
+    "//conditions:default": [
+        "-lcurl",
+        "-lpthread",
+    ],
+})
+
+_PLATFORM_DEFINES = select({
+    "@platforms//os:windows": [
+        "_CRT_SECURE_NO_WARNINGS",
+        "NOMINMAX",
+        "WIN32_LEAN_AND_MEAN",
+    ],
+    "//conditions:default": [],
+})
 
 cc_library(
     name = "portfolio_health_core",
@@ -16,21 +77,16 @@ cc_library(
         "src/NotificationService.cpp",
         "src/SecureUtils.cpp",
         "src/TaskScheduler.cpp",
-        "adapters/linux/PlatformAdapter.cpp",
-    ],
+    ] + _PLATFORM_ADAPTER,
     hdrs = glob(["include/*.hpp", "adapters/include/*.hpp"]),
     includes = ["include", "adapters/include"],
-    deps = ["@nlohmann_json//:json"],
-    copts = [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-Wpedantic",
-    ],
-    linkopts = [
-        "-lcurl",
-        "-lpthread",
-    ],
+    deps = ["@nlohmann_json//:json"] + select({
+        "@platforms//os:windows": [":vcpkg_libcurl"],
+        "//conditions:default": [],
+    }),
+    copts = _CXX_COPTS,
+    defines = _PLATFORM_DEFINES,
+    linkopts = _PLATFORM_LINKOPTS,
     visibility = ["//visibility:public"],
 )
 
@@ -38,12 +94,8 @@ cc_binary(
     name = "portfolio_health",
     srcs = ["src/main.cpp"],
     deps = [":portfolio_health_core"],
-    copts = [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-Wpedantic",
-    ],
+    copts = _CXX_COPTS,
+    defines = _PLATFORM_DEFINES,
 )
 
 cc_test(
@@ -53,10 +105,6 @@ cc_test(
         ":portfolio_health_core",
         "@googletest//:gtest_main",
     ],
-    copts = [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-Wpedantic",
-    ],
+    copts = _CXX_COPTS,
+    defines = _PLATFORM_DEFINES,
 )

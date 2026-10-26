@@ -560,11 +560,20 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.70" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.70"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.70"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.70" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.70`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.71" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.71"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.71"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.71" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.71`" in (root / "design" / "README.md").read_text()
+    release71 = (root / "design" / "RELEASE_NOTES_V2.0.71.md").read_text()
+    assert "Windows build and launcher reliability" in release71
+    assert "post-login release popup" in release71
+    implementation71 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.71.md").read_text()
+    assert "reparse points" in implementation71
+    assert "read-only" in implementation71
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "Windows build and launcher reliability · v2.0.71" in source
+    assert "releaseNoticeV2070Addendum() + releaseNoticeV2071Addendum()" in source
     release70 = (root / "design" / "RELEASE_NOTES_V2.0.70.md").read_text()
     assert "Windows, Linux, and macOS" in release70
     assert "login popup" in release70
@@ -594,6 +603,23 @@ def test_patch_release_version_is_aligned_across_build_and_readmes():
     assert "releaseNoticeV2052Addendum()" in source.split("html.replace(", 1)[1].split(
         "marker);", 1
     )[0]
+
+
+def test_windows_batch_build_and_launcher_safeguards():
+    root = Path(__file__).parents[2]
+    build = (root / "buildCode.bat").read_text()
+    launcher = (root / "run.bat").read_text()
+    shell_build = (root / "buildCode.sh").read_text()
+
+    assert "call :validate_build_dir" in build
+    assert "BUILD_DIR must be a child of the project directory" in build
+    assert "ReparsePoint" in build
+    assert "while ($current" in build
+    assert "pytest -q tests/python" in build
+    assert "pytest -q tests/python" in shell_build
+    assert "PORTFOLIO_STALE_CORE" in launcher
+    assert "'src','include','adapters'" in launcher
+    assert "ExecutionPolicy Bypass" not in launcher
 
 
 def test_market_holiday_api_reports_unavailable_and_stale_data_explicitly():
@@ -789,8 +815,9 @@ def test_stream_quotes_are_local_and_authorized_feed_url_is_not_returned():
     sender = streaming.split("bool sendFrame(", 1)[1].split(
         "bool sendBinary(", 1
     )[0]
-    assert "result == CURLE_AGAIN" in sender
-    assert "descriptor.events = POLLOUT" in sender
+    assert "result != CURLE_AGAIN" in sender
+    assert "platform::waitForSocket(" in sender
+    assert "true, 250" in sender
     assert "WebSocket send timed out" in sender
     assert "supportsWebSocketProtocol()" in streaming
     assert 'installed libcurl lacks WSS support' in streaming

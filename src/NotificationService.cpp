@@ -1,4 +1,5 @@
 #include "NotificationService.hpp"
+#include <algorithm>
 #include <ctime>
 #include <sstream>
 #include <iomanip>

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <spawn.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -74,6 +75,17 @@ std::ptrdiff_t writeSocket(SocketHandle socket, const char* data, std::size_t si
 #else
     return static_cast<std::ptrdiff_t>(::send(socket, data, size, MSG_NOSIGNAL));
 #endif
+}
+
+int waitForSocket(SocketHandle socket, bool waitForWrite, unsigned int timeoutMilliseconds) {
+    pollfd descriptor{};
+    descriptor.fd = socket;
+    descriptor.events = waitForWrite ? POLLOUT : POLLIN;
+    const int result = ::poll(&descriptor, 1, static_cast<int>(timeoutMilliseconds));
+    if (result < 0) return -1;
+    if (result == 0) return 0;
+    if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) != 0) return -1;
+    return (descriptor.revents & descriptor.events) != 0 ? 1 : 0;
 }
 
 bool socketOperationInterrupted() {

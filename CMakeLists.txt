@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(portfolio_health VERSION 2.0.70 LANGUAGES CXX)
+project(portfolio_health VERSION 2.0.71 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PORTFOLIO_HEALTH_ENABLE_IPO "Enable interprocedural optimization" OFF)
@@ -154,6 +154,7 @@ else()
 endif()
 
 if(BUILD_TESTING)
+  find_package(GTest CONFIG QUIET)
   if(NOT TARGET GTest::gtest_main)
     include(FetchContent)
     FetchContent_Declare(
