@@ -560,11 +560,28 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.75" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.75"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.75"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.75" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.75`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.77" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.77"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.77"' in (root / "MODULE.bazel").read_text()
+    assert r'PORTFOLIO_HEALTH_VERSION=\\\"2.0.77\\\"' in (root / "BUILD.bazel").read_text()
+    assert "Version: 2.0.77" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.77`" in (root / "design" / "README.md").read_text()
+    release77 = (root / "design" / "RELEASE_NOTES_V2.0.77.md").read_text()
+    assert "unknown" in release77
+    assert "market-holiday tooltip" in release77
+    implementation77 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.77.md").read_text()
+    assert "PORTFOLIO_HEALTH_VERSION" in implementation77
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "Windows dashboard display · v2.0.77" in source
+    assert "white-space:normal!important;overflow-wrap:anywhere!important" in source
+    release76 = (root / "design" / "RELEASE_NOTES_V2.0.76.md").read_text()
+    assert ".env.production" in release76
+    assert "tracked remain tracked" in release76
+    implementation76 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.76.md").read_text()
+    assert ".env.example" in implementation76
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "Windows ignore and credential hygiene · v2.0.76" in source
+    assert "releaseNoticeV2076Addendum() + releaseNoticeV2077Addendum()" in source
     release75 = (root / "design" / "RELEASE_NOTES_V2.0.75.md").read_text()
     assert "denied for the executable" in release75.lower()
     implementation75 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.75.md").read_text()
@@ -661,6 +678,35 @@ def test_windows_batch_build_and_launcher_safeguards():
     assert "PORTFOLIO_STALE_CORE" in launcher
     assert "'src','include','adapters'" in launcher
     assert "-ExecutionPolicy Bypass -File" in launcher
+
+
+def test_gitignore_protects_local_credentials_and_windows_build_state():
+    root = Path(__file__).parents[2]
+    ignored_paths = (
+        ".env.production",
+        ".env.local",
+        ".upstox.env.backup",
+        ".folio_login_code.bak",
+        ".vs/WorkspaceState.json",
+        "CMakeUserPresets.json",
+        "cmake-build-debug/CMakeCache.txt",
+        "CMakeFiles/TargetDirectories.txt",
+    )
+    for path in ignored_paths:
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", "--", path],
+            cwd=root,
+            check=False,
+        )
+        assert result.returncode == 0, f"{path} should be ignored"
+
+    for path in (".env.example", ".env.template"):
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", "--", path],
+            cwd=root,
+            check=False,
+        )
+        assert result.returncode == 1, f"{path} should remain trackable"
 
 
 def test_windows_web_launcher_waits_for_server_and_opens_browser():

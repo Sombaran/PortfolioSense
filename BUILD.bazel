@@ -61,6 +61,10 @@ _PLATFORM_DEFINES = select({
     "//conditions:default": [],
 })
 
+_PROJECT_DEFINES = _PLATFORM_DEFINES + [
+    "PORTFOLIO_HEALTH_VERSION=\\\"2.0.77\\\"",
+]
+
 cc_library(
     name = "portfolio_health_core",
     srcs = [
@@ -85,7 +89,7 @@ cc_library(
         "//conditions:default": [],
     }),
     copts = _CXX_COPTS,
-    defines = _PLATFORM_DEFINES,
+    defines = _PROJECT_DEFINES,
     linkopts = _PLATFORM_LINKOPTS,
     visibility = ["//visibility:public"],
 )
@@ -95,7 +99,7 @@ cc_binary(
     srcs = ["src/main.cpp"],
     deps = [":portfolio_health_core"],
     copts = _CXX_COPTS,
-    defines = _PLATFORM_DEFINES,
+    defines = _PROJECT_DEFINES,
 )
 
 cc_test(

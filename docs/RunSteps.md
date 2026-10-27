@@ -101,6 +101,10 @@ Windows reparse point. Python regression collection is limited to
 `tests\python`, so Bazel's generated dependency trees are not collected.
 Python must be available on `PATH` for the Python-backed analysis
 (`python.exe` on Windows, `python3` on Linux/macOS).
+The repository ignores common local `.env.*` files (except `.env.example` and
+`.env.template`), Windows Visual Studio user state, and CMake user presets and
+build metadata. `.gitignore` is only a guard against accidental staging; verify
+that credential files are not already tracked before publishing changes.
 
 ---
 

@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.75`
+**Version:** `2.0.77`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -78,6 +78,10 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.77](RELEASE_NOTES_V2.0.77.md)** — fix Bazel version display and keep market-holiday tooltip text readable
+- **[Implementation Summary v2.0.77](IMPLEMENTATION_SUMMARY_V2.0.77.md)** — define Bazel version metadata and contain wrapped tooltip text
+- **[Release Notes v2.0.76](RELEASE_NOTES_V2.0.76.md)** — ignore local credential variants and Windows IDE/build state
+- **[Implementation Summary v2.0.76](IMPLEMENTATION_SUMMARY_V2.0.76.md)** — reduce accidental secret and generated-file staging risk
 - **[Release Notes v2.0.75](RELEASE_NOTES_V2.0.75.md)** — fix Windows Bazel output locking and C++ warnings
 - **[Implementation Summary v2.0.75](IMPLEMENTATION_SUMMARY_V2.0.75.md)** — identify a running Bazel output and remove unreachable code
 - **[Release Notes v2.0.74](RELEASE_NOTES_V2.0.74.md)** — enable WSS for Windows Bazel live-market feeds
@@ -186,6 +190,8 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.77` — Define `PORTFOLIO_HEALTH_VERSION` for Bazel core and executable targets so Bazel builds report the actual semver instead of `unknown`; wrap long market-holiday tooltip text within a responsive dark tooltip with readable contrast; update the post-login popup and preserve authenticated, read-only Stock API access and Linux runtime behavior.
+- `2.0.76` — Ignore common local `.env.*` files and login-file backups while allowing safe `.env.example` and `.env.template` files; exclude Windows Visual Studio user state, CMake user presets, and generated CMake metadata; document that ignore rules prevent accidental staging but do not untrack existing secrets; preserve Linux build/runtime behavior and summarize the change in the post-login popup.
 - `2.0.75` — Remove a duplicate unreachable dashboard-script return and explicitly discard the result of JSON syntax validation; before Bazel build/clean, detect whether the exact output executable is still running and report its PID without terminating it; keep other web behavior, Windows WSS setup, Linux behavior, and server-side Stock API boundaries unchanged; summarize in the post-login popup.
 - `2.0.74` — Fix Windows Bazel live-feed reconnects caused by vcpkg's default curl package omitting WSS; install `curl[websockets]` into the project-local vcpkg root instead of reusing a plain-curl package; require explicit `CURL_ROOT` overrides to provide WSS-enabled libcurl; keep TLS verification, trusted Upstox endpoints, server-side credentials, Linux behavior, and post-login popup summary.
 - `2.0.73` — Fix `run.bat --web` exiting before the server started when credentials existed only in the user's `.upstox.env`; parse only approved API/login assignments without executing shell code; keep inherited values authoritative, reject reparse-point env files, and do not log credentials; open the browser only after the launched server is listening; retain authenticated, read-only Stock API behavior and summarize in the post-login popup.

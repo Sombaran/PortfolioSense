@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.75
+Version: 2.0.77
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -16,10 +16,14 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
-- **[v2.0.74 release notes](design/RELEASE_NOTES_V2.0.74.md)** — enable WSS for Windows Bazel live-market feeds
-- **[v2.0.74 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.74.md)** — configure vcpkg libcurl WebSocket support for Windows
+- **[v2.0.77 release notes](design/RELEASE_NOTES_V2.0.77.md)** — display the correct Bazel version and keep market-holiday tooltip text readable
+- **[v2.0.77 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.77.md)** — fix Bazel version metadata and bound tooltip text to its dark background
+- **[v2.0.76 release notes](design/RELEASE_NOTES_V2.0.76.md)** — ignore local credential variants and Windows IDE/build state
+- **[v2.0.76 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.76.md)** — reduce accidental secret and generated-file staging risk
 - **[v2.0.75 release notes](design/RELEASE_NOTES_V2.0.75.md)** — fix Windows Bazel output locking and C++ warnings
 - **[v2.0.75 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.75.md)** — diagnose the running executable and remove unreachable code
+- **[v2.0.74 release notes](design/RELEASE_NOTES_V2.0.74.md)** — enable WSS for Windows Bazel live-market feeds
+- **[v2.0.74 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.74.md)** — configure vcpkg libcurl WebSocket support for Windows
 - **[v2.0.73 release notes](design/RELEASE_NOTES_V2.0.73.md)** — load Windows web credentials safely before starting the server
 - **[v2.0.73 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.73.md)** — root cause of the Windows localhost connection refusal
 - **[v2.0.72 release notes](design/RELEASE_NOTES_V2.0.72.md)** — open the Windows web UI after the server is ready
@@ -77,9 +81,15 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.75
+Current release: 2.0.77
 
 Last updated: October 27, 2026
+
+Version 2.0.77 fixes the version shown by Bazel-built dashboards and CLI
+executables, and wraps long market-holiday tooltip text within its dark,
+readable boundary. The release popup summarizes both fixes. Stock API access
+remains authenticated, server-side, and read-only; Linux runtime behavior is
+unchanged.
 
 Version 2.0.75 removes two MSVC warnings in the web server and improves the
 Windows Bazel link-failure diagnostics. Before building, the helper now checks

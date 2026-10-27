@@ -12,9 +12,18 @@ __pycache__/
 
 # Local secret / login files
 .folio_login_code
+.folio_login_code.*
 .upstox.env
+.upstox.env.*
 *.local
 MODULE.bazel.lock
+
+# Local environment files; keep safe templates versionable
+.env/
+.env
+.env.*
+!.env.example
+!.env.template
 
 # Tooling / IDE state
 *.patch
@@ -26,9 +35,19 @@ MODULE.bazel.lock
 bazel-*
 build_support/vcpkg_curl/
 
-# Environment files
-.env/
-.env
+# Windows IDE and per-machine build state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+/CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+Testing/
+cmake-build-*/
 
 # Build artifacts
 build/
