@@ -394,7 +394,7 @@ bool StreamingClient::connect(const std::vector<std::string>& instrumentKeys) {
     }
     if (!supportsWebSocketProtocol()) {
         std::lock_guard<std::mutex> lock(quoteMutex_);
-        lastError_ = "installed libcurl lacks WSS support; rebuild with the Conan libcurl WebSocket package";
+        lastError_ = "installed libcurl lacks WSS support; rebuild with WebSocket-enabled libcurl (Conan: with_websockets; vcpkg: curl[websockets])";
         return false;
     }
     if (!authorize_) {

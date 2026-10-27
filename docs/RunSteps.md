@@ -57,8 +57,9 @@ uses the native Windows MSVC toolchain, so it also
 requires Visual Studio C++ Build Tools and an MSVC-compatible libcurl. The
 helper initializes the x64 MSVC environment automatically when Visual Studio
 is installed. When vcpkg is on `PATH`, configured in `VCPKG_ROOT`, or installed
-at `C:\vcpkg`, the helper installs curl in manifest mode if it is missing,
-including for vcpkg distributions that disable classic mode. Installed
+at `C:\vcpkg`, the helper installs `curl[websockets]` in manifest mode,
+including for vcpkg distributions that disable classic mode. This also upgrades
+an existing plain-curl installation to the WSS-enabled feature. Installed
 packages go under `%LOCALAPPDATA%\baran-capital-view\vcpkg\installed` by
 default, avoiding permission errors when vcpkg itself is under Visual Studio.
 The temporary manifest uses the vcpkg checkout commit or Visual Studio
@@ -66,8 +67,8 @@ vcpkg bundle's embedded registry commit as `builtin-baseline`; set
 `VCPKG_BASELINE` only when your vcpkg instance needs a specific registry
 baseline. Set `VCPKG_INSTALL_ROOT` to choose another writable install
 location, `VCPKG_TRIPLET` to use a different triplet, or `CURL_ROOT` to use
-an existing triplet directory containing `include\curl\curl.h` and
-`lib\libcurl.lib`. Bazel or Bazelisk must be on `PATH`; alternatively, set
+an existing triplet directory containing WSS-enabled `include\curl\curl.h`
+and `lib\libcurl.lib`. Bazel or Bazelisk must be on `PATH`; alternatively, set
 `BAZEL_EXE` to its full executable path:
 
 ```bat
@@ -140,7 +141,14 @@ run.bat --rebuild --web
 `PATH`. Web logs go to `%LOCALAPPDATA%\baran-capital-view\web-ui.log`; set
 `PORTFOLIO_WEB_LOG` to choose another path. Set `FOLIO_LOGIN_CODE`,
 `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, and `UPSTOX_ACCESS_TOKEN` in the
-environment when needed.
+environment when needed. With `--web`, the launcher waits for the local server
+to accept connections before opening `http://localhost:8080/` in the default
+browser; keep the launcher console open while using the web UI.
+On Windows, credentials can be set in the environment or in
+`%USERPROFILE%\.upstox.env` using simple `NAME=value` or `export NAME=value`
+lines. The batch launcher reads only `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`,
+`UPSTOX_ACCESS_TOKEN`, and `FOLIO_LOGIN_CODE`; it does not execute the file.
+Keep that per-user file protected from access by other Windows accounts.
 
 ### Option B — manual CMake
 

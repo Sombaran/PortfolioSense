@@ -88,7 +88,6 @@ goto launcher_ready
 :build_bazel
 if not defined VCPKG_TRIPLET set "VCPKG_TRIPLET=x64-windows"
 if not defined VCPKG_INSTALL_ROOT if defined LOCALAPPDATA set "VCPKG_INSTALL_ROOT=%LOCALAPPDATA%\baran-capital-view\vcpkg\installed"
-if not defined CURL_ROOT if defined VCPKG_ROOT if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include\curl\curl.h" if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib\libcurl.lib" set "CURL_ROOT=%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%"
 if defined CURL_ROOT set "PATH=%CURL_ROOT%\bin;%PATH%"
 set "EXECUTABLE=%BAZEL_BIN_DIR%\portfolio_health.exe"
 if "%REBUILD%"=="1" (
@@ -146,12 +145,12 @@ if errorlevel 1 (
 echo Capturing web logs in "%PORTFOLIO_WEB_LOG%"
 echo Starting Portfolio Health Web UI at http://127.0.0.1:8080
 set "PYTHONUNBUFFERED=1"
-call "%EXECUTABLE%" %1 %2 %3 %4 %5 %6 %7 %8 %9 >>"%PORTFOLIO_WEB_LOG%" 2>&1
+call powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\run_web_ui.ps1" -ProjectRoot "%ROOT%" -Executable "%EXECUTABLE%" -LogFile "%PORTFOLIO_WEB_LOG%" %1 %2 %3 %4 %5 %6 %7 %8 %9
 set "RESULT=%ERRORLEVEL%"
 goto finish
 
 :launch
-call "%EXECUTABLE%" %1 %2 %3 %4 %5 %6 %7 %8 %9
+call "%EXECUTABLE%" %*
 set "RESULT=%ERRORLEVEL%"
 goto finish
 

@@ -1,6 +1,6 @@
 # baran-capital-view
 
-Version: 2.0.71
+Version: 2.0.75
 
 baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
@@ -16,6 +16,14 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.74 release notes](design/RELEASE_NOTES_V2.0.74.md)** — enable WSS for Windows Bazel live-market feeds
+- **[v2.0.74 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.74.md)** — configure vcpkg libcurl WebSocket support for Windows
+- **[v2.0.75 release notes](design/RELEASE_NOTES_V2.0.75.md)** — fix Windows Bazel output locking and C++ warnings
+- **[v2.0.75 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.75.md)** — diagnose the running executable and remove unreachable code
+- **[v2.0.73 release notes](design/RELEASE_NOTES_V2.0.73.md)** — load Windows web credentials safely before starting the server
+- **[v2.0.73 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.73.md)** — root cause of the Windows localhost connection refusal
+- **[v2.0.72 release notes](design/RELEASE_NOTES_V2.0.72.md)** — open the Windows web UI after the server is ready
+- **[v2.0.72 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.72.md)** — readiness-checked localhost launch with private logs
 - **[v2.0.71 release notes](design/RELEASE_NOTES_V2.0.71.md)** — harden Windows build/launcher behavior and scope Python tests to project tests
 - **[v2.0.71 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.71.md)** — fix stale Windows builds, guard rebuild paths, and preserve read-only Stock API access
 - **[v2.0.70 release notes](design/RELEASE_NOTES_V2.0.70.md)** — add cross-platform adapters and launch Python analysis without a shell
@@ -69,9 +77,16 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.71
+Current release: 2.0.75
 
-Last updated: October 26, 2026
+Last updated: October 27, 2026
+
+Version 2.0.75 removes two MSVC warnings in the web server and improves the
+Windows Bazel link-failure diagnostics. Before building, the helper now checks
+whether the exact `portfolio_health.exe` output is still running and reports
+its PID so it can be closed before retrying; it never terminates a live
+dashboard. Linux behavior and existing WebSocket, TLS, and Stock API security
+checks are unchanged. The post-login popup summarizes the fix.
 
 Version 2.0.71 hardens Windows build and launcher behavior: CMake launch now
 detects stale platform-adapter sources and missing core libraries, and rebuild

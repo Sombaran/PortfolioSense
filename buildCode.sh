@@ -172,8 +172,8 @@ if [[ "$build_system" == "bazel" ]]; then
     fi
     if [[ -z "$curl_root" || ! -f "$curl_root/include/curl/curl.h" ||
           ! -f "$curl_root/lib/libcurl.lib" ]]; then
-      echo "Windows Bazel builds require MSVC-compatible libcurl headers and libcurl.lib." >&2
-      echo "Install curl with vcpkg (vcpkg install curl:x64-windows), then set VCPKG_ROOT or CURL_ROOT." >&2
+      echo "Windows Bazel builds require MSVC-compatible libcurl with WebSocket support." >&2
+      echo "Install curl[websockets] with vcpkg (vcpkg install 'curl[websockets]:x64-windows'), then set VCPKG_ROOT or CURL_ROOT." >&2
       exit 1
     fi
     if command -v cygpath >/dev/null 2>&1; then

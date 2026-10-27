@@ -1,6 +1,6 @@
 # Portfolio Health — C++ Web UI and CLI
 
-**Version:** `2.0.71`
+**Version:** `2.0.75`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -78,6 +78,14 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.75](RELEASE_NOTES_V2.0.75.md)** — fix Windows Bazel output locking and C++ warnings
+- **[Implementation Summary v2.0.75](IMPLEMENTATION_SUMMARY_V2.0.75.md)** — identify a running Bazel output and remove unreachable code
+- **[Release Notes v2.0.74](RELEASE_NOTES_V2.0.74.md)** — enable WSS for Windows Bazel live-market feeds
+- **[Implementation Summary v2.0.74](IMPLEMENTATION_SUMMARY_V2.0.74.md)** — configure vcpkg libcurl WebSocket support for Windows
+- **[Release Notes v2.0.73](RELEASE_NOTES_V2.0.73.md)** — load approved Windows web credentials before starting the server
+- **[Implementation Summary v2.0.73](IMPLEMENTATION_SUMMARY_V2.0.73.md)** — diagnose and fix localhost connection refusal
+- **[Release Notes v2.0.72](RELEASE_NOTES_V2.0.72.md)** — open the Windows web UI only after the local server is ready
+- **[Implementation Summary v2.0.72](IMPLEMENTATION_SUMMARY_V2.0.72.md)** — root cause, readiness checking, and preserved credential handling
 - **[Release Notes v2.0.71](RELEASE_NOTES_V2.0.71.md)** — harden Windows build/launcher behavior and scope project Python tests
 - **[Implementation Summary v2.0.71](IMPLEMENTATION_SUMMARY_V2.0.71.md)** — root cause, safe rebuild boundaries, and preserved Stock API security
 - **[Release Notes v2.0.70](RELEASE_NOTES_V2.0.70.md)** — Windows, Linux, and macOS runtime adapters; shell-free Python analysis invocation
@@ -178,6 +186,10 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.75` — Remove a duplicate unreachable dashboard-script return and explicitly discard the result of JSON syntax validation; before Bazel build/clean, detect whether the exact output executable is still running and report its PID without terminating it; keep other web behavior, Windows WSS setup, Linux behavior, and server-side Stock API boundaries unchanged; summarize in the post-login popup.
+- `2.0.74` — Fix Windows Bazel live-feed reconnects caused by vcpkg's default curl package omitting WSS; install `curl[websockets]` into the project-local vcpkg root instead of reusing a plain-curl package; require explicit `CURL_ROOT` overrides to provide WSS-enabled libcurl; keep TLS verification, trusted Upstox endpoints, server-side credentials, Linux behavior, and post-login popup summary.
+- `2.0.73` — Fix `run.bat --web` exiting before the server started when credentials existed only in the user's `.upstox.env`; parse only approved API/login assignments without executing shell code; keep inherited values authoritative, reject reparse-point env files, and do not log credentials; open the browser only after the launched server is listening; retain authenticated, read-only Stock API behavior and summarize in the post-login popup.
+- `2.0.72` — Fix `run.bat --web` not opening the browser: wait for the local server socket to accept connections before opening `http://localhost:8080/`; surface startup/browser errors; keep server output in the private web log, forward all application arguments, preserve Linux behavior, and summarize the fix in the post-login popup.
 - `2.0.71` — Fix Windows launcher stale-build detection by tracking platform adapters and the core DLL; reject rebuild paths outside the project or containing reparse points; scope Python regression tests to `tests/python` to avoid Bazel external-workspace collection; preserve Linux behavior and authenticated read-only Stock API access; summarize the fix in the post-login popup.
 - `2.0.70` — Add platform-specific adapters for Windows, Linux, and macOS socket, temp-file, executable path, process, environment, and secure-random operations; invoke Python with argument arrays rather than shell command strings; clean up temporary analysis files on exceptions; retain portfolio logic and authenticated, read-only Upstox behavior; summarize changes in the post-login popup.
 - `2.0.69` — Return HTTP 502 with an explicit error payload when Upstox holiday data is unavailable and there is no valid cached calendar; mark retained calendars stale and identify estimated regular hours in the market-status tooltip; expose loading state and discard stale responses/cache updates across dashboard views; preserve read-only broker access and server-side credentials; summarize the changes in the post-login popup.

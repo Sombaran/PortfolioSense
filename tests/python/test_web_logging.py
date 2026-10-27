@@ -560,18 +560,50 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.71" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.71"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.71"' in (root / "MODULE.bazel").read_text()
-    assert "Version: 2.0.71" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.71`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.75" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.75"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.75"' in (root / "MODULE.bazel").read_text()
+    assert "Version: 2.0.75" in (root / "README.md").read_text()
+    assert "**Version:** `2.0.75`" in (root / "design" / "README.md").read_text()
+    release75 = (root / "design" / "RELEASE_NOTES_V2.0.75.md").read_text()
+    assert "denied for the executable" in release75.lower()
+    implementation75 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.75.md").read_text()
+    assert "output executable still running" in implementation75
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "Windows build diagnostics · v2.0.75" in source
+    assert "releaseNoticeV2074Addendum() + releaseNoticeV2075Addendum()" in source
+    release74 = (root / "design" / "RELEASE_NOTES_V2.0.74.md").read_text()
+    assert "curl[websockets]" in release74
+    assert "post-login release popup" in release74
+    implementation74 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.74.md").read_text()
+    assert "plain-curl installation" in implementation74
+    source = (root / "src" / "WebServer.cpp").read_text()
+    assert "Windows live market feed · v2.0.74" in source
+    assert "releaseNoticeV2073Addendum() + releaseNoticeV2074Addendum()" in source
+    release73 = (root / "design" / "RELEASE_NOTES_V2.0.73.md").read_text()
+    assert "ERR_CONNECTION_REFUSED" in release73
+    assert "post-login release popup" in release73
+    implementation73 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.73.md").read_text()
+    assert "evaluating shell expressions" in implementation73
+    assert "Windows web startup credentials · v2.0.73" in source
+    assert "releaseNoticeV2072Addendum() + releaseNoticeV2073Addendum()" in source
+    release72 = (root / "design" / "RELEASE_NOTES_V2.0.72.md").read_text()
+    assert "run.bat --web" in release72
+    assert "post-login release popup" in release72
+    implementation72 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.72.md").read_text()
+    assert "127.0.0.1" in implementation72
+    assert "server-side" in implementation72
+    assert "Windows web launcher · v2.0.72" in source
+    assert "releaseNoticeV2071Addendum() + releaseNoticeV2072Addendum()" in source
+    assert "# Implementation Summary v2.0.71" in (
+        root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.71.md"
+    ).read_text()
     release71 = (root / "design" / "RELEASE_NOTES_V2.0.71.md").read_text()
     assert "Windows build and launcher reliability" in release71
     assert "post-login release popup" in release71
     implementation71 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.71.md").read_text()
     assert "reparse points" in implementation71
     assert "read-only" in implementation71
-    source = (root / "src" / "WebServer.cpp").read_text()
     assert "Windows build and launcher reliability · v2.0.71" in source
     assert "releaseNoticeV2070Addendum() + releaseNoticeV2071Addendum()" in source
     release70 = (root / "design" / "RELEASE_NOTES_V2.0.70.md").read_text()
@@ -617,9 +649,36 @@ def test_windows_batch_build_and_launcher_safeguards():
     assert "while ($current" in build
     assert "pytest -q tests/python" in build
     assert "pytest -q tests/python" in shell_build
+    assert '"name":"curl","features":["websockets"]' in build
+    assert "curl[websockets]:%VCPKG_TRIPLET%" in build
+    assert "curl[websockets]:x64-windows" in shell_build
+    assert "WSS-enabled libcurl" in build
+    assert "if not defined CURL_ROOT if defined VCPKG_ROOT if exist" not in launcher
+    assert "PORTFOLIO_BAZEL_OUTPUT_DIR" in build
+    assert "Get-Process -Name 'portfolio_health'" in build
+    assert "Close the running application and retry." in build
+    assert "never terminates" not in build
     assert "PORTFOLIO_STALE_CORE" in launcher
     assert "'src','include','adapters'" in launcher
-    assert "ExecutionPolicy Bypass" not in launcher
+    assert "-ExecutionPolicy Bypass -File" in launcher
+
+
+def test_windows_web_launcher_waits_for_server_and_opens_browser():
+    root = Path(__file__).parents[2]
+    launcher = (root / "run.bat").read_text()
+    web_runner = (root / "tools" / "run_web_ui.ps1").read_text()
+
+    assert 'call powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\\tools\\run_web_ui.ps1"' in launcher
+    assert "UPSTOX_API_KEY" in web_runner
+    assert "UPSTOX_API_SECRET" in web_runner
+    assert "UPSTOX_ACCESS_TOKEN" in web_runner
+    assert "Import-PortfolioEnvironmentFile" in web_runner
+    assert "$name -notin $allowedNames" in web_runner
+    assert "ReparsePoint" in web_runner
+    assert "127.0.0.1', 8080" in web_runner
+    assert "Start-Process 'http://localhost:8080/'" in web_runner
+    assert "within 20 seconds" in web_runner
+    assert "RedirectStandardOutput = $true" in web_runner
 
 
 def test_market_holiday_api_reports_unavailable_and_stale_data_explicitly():
@@ -821,7 +880,31 @@ def test_stream_quotes_are_local_and_authorized_feed_url_is_not_returned():
     assert "WebSocket send timed out" in sender
     assert "supportsWebSocketProtocol()" in streaming
     assert 'installed libcurl lacks WSS support' in streaming
+    assert "vcpkg: curl[websockets]" in streaming
     assert "releaseNoticeV2056Addendum()" in source
+
+
+def test_web_server_has_no_unreachable_ui_code_and_consumes_json_parse_result():
+    source = (Path(__file__).parents[2] / "src" / "WebServer.cpp").read_text()
+    dashboard_optimization = source.split(
+        "const char* dashboardUiOptimization()", 1
+    )[1].split("\nconst char* dashboardResponsiveLayout()", 1)[0]
+    validation = source.split("std::string ensureValidJson(", 1)[1].split(
+        "\nstd::string response(", 1
+    )[0]
+
+    assert dashboard_optimization.count('return R"JS(') == 1
+    assert "(void)json::parse(body);" in validation
+
+
+def test_windows_bazel_build_detects_a_locked_output_without_stopping_it():
+    build = (Path(__file__).parents[2] / "buildCode.bat").read_text()
+
+    assert build.index("Get-Process -Name 'portfolio_health'") < build.index(
+        'call "%BAZEL_EXE%" clean --expunge'
+    )
+    assert "Cannot rebuild the Bazel output while portfolio_health.exe is running" in build
+    assert "Close the running application and retry." in build
 
 
 def test_authenticated_requests_renew_the_sliding_session_cookie():

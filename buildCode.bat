@@ -10,6 +10,7 @@ if errorlevel 1 (
 )
 
 if not defined BUILD_DIR set "BUILD_DIR=build-windows"
+if not defined BAZEL_BIN_DIR set "BAZEL_BIN_DIR=bazel-bin"
 if not defined MSYS2_ROOT set "MSYS2_ROOT=C:\msys64"
 set "BUILD_SYSTEM=cmake"
 set "REBUILD=0"
@@ -182,7 +183,7 @@ if not defined VCPKG_EXE if exist "C:\vcpkg\vcpkg.exe" (
 if not defined VCPKG_ROOT (
   echo ERROR: Windows Bazel builds need MSVC-compatible libcurl.
   echo Install vcpkg or set VCPKG_ROOT to its directory.
-  echo Set CURL_ROOT to an existing triplet directory to skip automatic installation.
+  echo Set CURL_ROOT only for an existing triplet with WSS-enabled libcurl.
   goto failed
 )
 if not defined VCPKG_BASELINE for /f "delims=" %%B in ('git -C "%VCPKG_ROOT%" rev-parse HEAD 2^>nul') do set "VCPKG_BASELINE=%%B"
@@ -192,16 +193,14 @@ if not defined VCPKG_BASELINE (
   echo Set VCPKG_BASELINE to the registry commit supported by this vcpkg instance.
   goto failed
 )
-if not defined CURL_ROOT if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include\curl\curl.h" set "CURL_ROOT=%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%"
-if not defined CURL_ROOT set "CURL_ROOT=%VCPKG_INSTALL_ROOT%\%VCPKG_TRIPLET%"
-if exist "%CURL_ROOT%\include\curl\curl.h" if exist "%CURL_ROOT%\lib\libcurl.lib" goto curl_root_selected
 if not defined VCPKG_EXE (
-  echo ERROR: MSVC-compatible libcurl was not found under "%CURL_ROOT%".
+  echo ERROR: vcpkg is required to install WebSocket-enabled libcurl for Bazel.
   echo vcpkg.exe was not found to install curl in manifest mode.
   echo Add vcpkg to PATH, set VCPKG_ROOT, or provide a complete CURL_ROOT.
-  echo Or set CURL_ROOT to a triplet containing include\curl\curl.h and lib\libcurl.lib.
+  echo An explicit CURL_ROOT must contain WSS-enabled libcurl headers and import library.
   goto failed
 )
+set "CURL_ROOT=%VCPKG_INSTALL_ROOT%\%VCPKG_TRIPLET%"
 echo Installing MSVC-compatible libcurl for triplet %VCPKG_TRIPLET%...
 set "VCPKG_MANIFEST_DIR=%TEMP%\baran-capital-view-vcpkg-%RANDOM%-%RANDOM%"
 mkdir "%VCPKG_MANIFEST_DIR%" >nul 2>nul
@@ -209,7 +208,7 @@ if errorlevel 1 (
   echo ERROR: Could not create temporary vcpkg manifest directory "%VCPKG_MANIFEST_DIR%".
   goto failed
 )
->"%VCPKG_MANIFEST_DIR%\vcpkg.json" echo {"name":"portfolio-health-build","version-string":"1.0.0","builtin-baseline":"%VCPKG_BASELINE%","dependencies":["curl"]}
+>"%VCPKG_MANIFEST_DIR%\vcpkg.json" echo {"name":"portfolio-health-build","version-string":"1.0.0","builtin-baseline":"%VCPKG_BASELINE%","dependencies":[{"name":"curl","features":["websockets"]}]}
 pushd "%VCPKG_MANIFEST_DIR%" >nul
 if errorlevel 1 (
   rmdir /s /q "%VCPKG_MANIFEST_DIR%"
@@ -221,7 +220,8 @@ set "VCPKG_INSTALL_RESULT=%ERRORLEVEL%"
 popd
 rmdir /s /q "%VCPKG_MANIFEST_DIR%"
 if not "%VCPKG_INSTALL_RESULT%"=="0" (
-  echo ERROR: vcpkg could not install curl:%VCPKG_TRIPLET%.
+  echo ERROR: vcpkg could not install curl[websockets]:%VCPKG_TRIPLET%.
+  echo Update vcpkg to a registry baseline that provides the curl websockets feature.
   goto failed
 )
 :curl_root_selected
@@ -273,6 +273,10 @@ if not exist "%ROOT%\build_support\vcpkg_curl\lib\libcurl.lib" (
 )
 set "LIB=%CURL_ROOT%\lib;%LIB%"
 set "PATH=%CURL_ROOT%\bin;%PATH%"
+set "PORTFOLIO_PROJECT_ROOT=%ROOT%"
+set "PORTFOLIO_BAZEL_OUTPUT_DIR=%BAZEL_BIN_DIR%"
+powershell.exe -NoProfile -Command "$bin=$env:PORTFOLIO_BAZEL_OUTPUT_DIR; if (-not [IO.Path]::IsPathRooted($bin)) { $bin=Join-Path $env:PORTFOLIO_PROJECT_ROOT $bin }; $target=[IO.Path]::GetFullPath((Join-Path $bin 'portfolio_health.exe')); $running=@(Get-Process -Name 'portfolio_health' -ErrorAction SilentlyContinue | Where-Object { $_.Path -and [string]::Equals([IO.Path]::GetFullPath($_.Path),$target,[StringComparison]::OrdinalIgnoreCase) }); if ($running) { $pids=($running | ForEach-Object { $_.Id }) -join ', '; Write-Error ('Cannot rebuild the Bazel output while portfolio_health.exe is running (PID(s): ' + $pids + '). Close the running application and retry.'); exit 1 }"
+if errorlevel 1 goto failed
 if "%REBUILD%"=="1" (
   call "%BAZEL_EXE%" clean --expunge
   if errorlevel 1 goto failed
@@ -281,7 +285,10 @@ if "%REBUILD%"=="1" (
 echo Building Windows Bazel target...
 call "%BAZEL_EXE%" build //:portfolio_health ^
   --action_env=LIB
-if errorlevel 1 goto failed
+if errorlevel 1 (
+  echo If the linker reported Permission denied for portfolio_health.exe, close any running application instance and retry.
+  goto failed
+)
 if "%SKIP_TESTS%"=="1" goto success
 
 echo Running Bazel C++ regression tests...
@@ -326,7 +333,7 @@ echo   --skip-tests Build targets without running C++ or Python tests.
 echo.
 echo CMake default: build-windows
 echo Override MSYS2_ROOT, BUILD_DIR, CURL_ROOT, VCPKG_ROOT, VCPKG_INSTALL_ROOT, VCPKG_TRIPLET, VCPKG_BASELINE, or BAZEL_EXE as needed.
-echo Bazel requires MSVC C++ Build Tools and MSVC-compatible curl from vcpkg.
+echo Bazel requires MSVC C++ Build Tools and MSVC-compatible curl[websockets] from vcpkg.
 goto finished
 
 :usage_error

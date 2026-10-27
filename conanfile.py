@@ -4,7 +4,7 @@ from conan.tools.cmake import CMakeDeps, CMakeToolchain, cmake_layout
 
 class PortfolioHealthConan(ConanFile):
     name = "portfolio_health"
-    version = "2.0.71"
+    version = "2.0.75"
     package_type = "application"
 
     settings = "os", "arch", "compiler", "build_type"
