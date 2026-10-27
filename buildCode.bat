@@ -202,7 +202,7 @@ if not defined VCPKG_EXE (
 )
 set "CURL_ROOT=%VCPKG_INSTALL_ROOT%\%VCPKG_TRIPLET%"
 echo Installing MSVC-compatible libcurl for triplet %VCPKG_TRIPLET%...
-set "VCPKG_MANIFEST_DIR=%TEMP%\baran-capital-view-vcpkg-%RANDOM%-%RANDOM%"
+set "VCPKG_MANIFEST_DIR=%TEMP%\PortfolioSense-vcpkg-%RANDOM%-%RANDOM%"
 mkdir "%VCPKG_MANIFEST_DIR%" >nul 2>nul
 if errorlevel 1 (
   echo ERROR: Could not create temporary vcpkg manifest directory "%VCPKG_MANIFEST_DIR%".

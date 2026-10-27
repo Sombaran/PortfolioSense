@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(portfolio_health VERSION 2.0.77 LANGUAGES CXX)
+project(portfolio_health VERSION 2.0.78 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PORTFOLIO_HEALTH_ENABLE_IPO "Enable interprocedural optimization" OFF)
@@ -205,7 +205,7 @@ if(BUILD_TESTING)
         COMMAND ${LCOV_EXECUTABLE} --summary ${CMAKE_BINARY_DIR}/coverage.info
         COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.info
           --output-directory ${CMAKE_BINARY_DIR}/coverage/html
-          --title "baran-capital-view coverage"
+          --title "PortfolioSense coverage"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         DEPENDS portfolio_health_tests
         USES_TERMINAL

@@ -1,6 +1,6 @@
-# Portfolio Health — C++ Web UI and CLI
+# PortfolioSense — Portfolio Health Web UI and CLI
 
-**Version:** `2.0.77`
+**Version:** `2.0.78`
 
 A C++17 portfolio service with a browser UI and command-line interface. It analyzes a live Upstox account and gives you a **0–100 health score** with P&L, exposure, concentration, diversification, holdings news, and advisory sentiment signals.
 
@@ -78,6 +78,8 @@ put it in browser JavaScript.
 ---
 
 ## Documentation Index
+- **[Release Notes v2.0.78](RELEASE_NOTES_V2.0.78.md)** — update PortfolioSense naming, align patch version, and streamline the Windows launcher
+- **[Implementation Summary v2.0.78](IMPLEMENTATION_SUMMARY_V2.0.78.md)** — preserve Stock API boundaries and summarize the post-login popup change
 - **[Release Notes v2.0.77](RELEASE_NOTES_V2.0.77.md)** — fix Bazel version display and keep market-holiday tooltip text readable
 - **[Implementation Summary v2.0.77](IMPLEMENTATION_SUMMARY_V2.0.77.md)** — define Bazel version metadata and contain wrapped tooltip text
 - **[Release Notes v2.0.76](RELEASE_NOTES_V2.0.76.md)** — ignore local credential variants and Windows IDE/build state
@@ -181,7 +183,7 @@ The browser UI provides Overview, Market news, Alerts, Deeper analysis, Fundamen
 
 ### Architecture guidance
 
-The recommended production pattern for baran-capital-view is a local monolith with an internal task scheduler and async worker queue. This approach keeps the stock API, the browser UI, and the analysis jobs tightly controlled in one trusted process, instead of expanding the system into a distributed workflow mesh too early.
+The recommended production pattern for PortfolioSense is a local monolith with an internal task scheduler and async worker queue. This approach keeps the stock API, the browser UI, and the analysis jobs tightly controlled in one trusted process, instead of expanding the system into a distributed workflow mesh too early.
 
 The local-first design provides:
 - a single entry point for credential handling
@@ -190,6 +192,7 @@ The local-first design provides:
 
 ### Release notes
 
+- `2.0.78` — Rename the GitHub project references to PortfolioSense, align the patch version across build metadata and documentation, and avoid adding the libcurl DLL directory to PATH twice in the Windows launcher; retain legacy cache/log locations, preserve the authenticated read-only Stock API boundary, and summarize the update in the post-login popup.
 - `2.0.77` — Define `PORTFOLIO_HEALTH_VERSION` for Bazel core and executable targets so Bazel builds report the actual semver instead of `unknown`; wrap long market-holiday tooltip text within a responsive dark tooltip with readable contrast; update the post-login popup and preserve authenticated, read-only Stock API access and Linux runtime behavior.
 - `2.0.76` — Ignore common local `.env.*` files and login-file backups while allowing safe `.env.example` and `.env.template` files; exclude Windows Visual Studio user state, CMake user presets, and generated CMake metadata; document that ignore rules prevent accidental staging but do not untrack existing secrets; preserve Linux build/runtime behavior and summarize the change in the post-login popup.
 - `2.0.75` — Remove a duplicate unreachable dashboard-script return and explicitly discard the result of JSON syntax validation; before Bazel build/clean, detect whether the exact output executable is still running and report its PID without terminating it; keep other web behavior, Windows WSS setup, Linux behavior, and server-side Stock API boundaries unchanged; summarize in the post-login popup.
@@ -248,8 +251,8 @@ The local-first design provides:
 * `2.0.1` — Hardened the live stock API path with HTTPS-only enforcement, trusted-Host allowlisting for Upstox endpoints, strict input validation for symbols/quantities/prices, secure memory-safe token handling, and a release-notes summary popup that explains the applied security fix in the right-side UI.
 * `2.0.0` — Added real-time WebSocket streaming for holdings and market quotes, expanded technical indicators (RSI, MACD, Bollinger Bands, Stochastic), integrated ML models for predictive analysis, added signal generation engine with automated risk scoring, implemented Orders API integration for automated trade execution, added push notifications for mobile/desktop alerts, and created comprehensive WebSocket streaming infrastructure.
 * `1.13.0` — Removed embedded broker and news-provider credentials, blocked bearer-token forwarding to untrusted API hosts, disabled credential-bearing HTTP traces, and stopped exposing upstream response bodies in errors.
-* `1.12.0` — Moved the Deeper analysis Python implementation and dependencies into baran-capital-view so it no longer runs code from the sibling market directory.
-* `1.11.0` — Made Deeper analysis refresh its live snapshot every five minutes, added atomic end-of-day `holding.csv` updates, and made the baran-capital-view Python launcher independent of the current working directory.
+* `1.12.0` — Moved the Deeper analysis Python implementation and dependencies into PortfolioSense so it no longer runs code from the sibling market directory.
+* `1.11.0` — Made Deeper analysis refresh its live snapshot every five minutes, added atomic end-of-day `holding.csv` updates, and made the PortfolioSense Python launcher independent of the current working directory.
 * `1.10.0` — Fixed the Deeper analysis iterator error and added a Google News RSS fallback with configured India-market query context when API providers are rate-limited, rejected, or unavailable.
 * `1.9.9` — Prevented raw saved news from bypassing Sombaran portfolio and 30-day filtering during fallback; Deeper Analysis categories now score only retained recent articles.
 * `1.9.8` — Added Deeper Analysis news categorization counts with clickable stock lists and enforced a maximum 30-day article window for portfolio news.
@@ -649,7 +652,7 @@ news export provides continuity but is clearly not a fresh market feed.
 ## Project Layout
 
 ```
-baran-capital-view/
+PortfolioSense/
 ├── CMakeLists.txt          ← build + run targets
 ├── run.sh                  ← one-shot build + run
 ├── config/                 ← credentials, portfolios, and sample data

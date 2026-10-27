@@ -1,8 +1,8 @@
-# baran-capital-view
+# PortfolioSense
 
-Version: 2.0.77
+Version: 2.0.78
 
-baran-capital-view is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
+PortfolioSense is a C++17 portfolio analysis and monitoring application for live and saved market data. It blends portfolio health scoring, fundamental analysis, C++/Python analytics, and browser-based reporting while keeping stock API access constrained and secure.
 
 ## Highlights
 
@@ -16,6 +16,8 @@ baran-capital-view is a C++17 portfolio analysis and monitoring application for 
 - One Market news tab for the portfolio-matched Upstox news feed
 - CSV download of the authenticated Som Baran Portfolio holdings from Operations
 - Release-notes popup summarizing the current code-change version and fixes
+- **[v2.0.78 release notes](design/RELEASE_NOTES_V2.0.78.md)** — rename the project, align release metadata, and streamline the Windows launcher
+- **[v2.0.78 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.78.md)** — preserve the existing Stock API boundary and add the post-login release note
 - **[v2.0.77 release notes](design/RELEASE_NOTES_V2.0.77.md)** — display the correct Bazel version and keep market-holiday tooltip text readable
 - **[v2.0.77 implementation summary](design/IMPLEMENTATION_SUMMARY_V2.0.77.md)** — fix Bazel version metadata and bound tooltip text to its dark background
 - **[v2.0.76 release notes](design/RELEASE_NOTES_V2.0.76.md)** — ignore local credential variants and Windows IDE/build state
@@ -81,15 +83,15 @@ The project follows semantic versioning in x.x.x format:
 
 Each release includes a versioned right-side popup summarizing the fix set. The browser UI, CLI, and build metadata remain aligned with the shipped code version.
 
-Current release: 2.0.77
+Current release: 2.0.78
 
 Last updated: October 27, 2026
 
-Version 2.0.77 fixes the version shown by Bazel-built dashboards and CLI
-executables, and wraps long market-holiday tooltip text within its dark,
-readable boundary. The release popup summarizes both fixes. Stock API access
-remains authenticated, server-side, and read-only; Linux runtime behavior is
-unchanged.
+Version 2.0.78 updates the project name and release metadata and avoids
+duplicating the libcurl DLL directory in the Windows launcher PATH. The
+post-login release popup summarizes the changes. Existing Stock API behavior
+remains authenticated, server-side, and read-only; legacy local cache and log
+locations remain unchanged.
 
 Version 2.0.75 removes two MSVC warnings in the web server and improves the
 Windows Bazel link-failure diagnostics. Before building, the helper now checks
@@ -315,6 +317,7 @@ selected.
 
 Version 2.0.39 captures C++ stdout and stderr for `./run.sh --web` in a
 per-user log at `${XDG_STATE_HOME:-~/.local/state}/baran-capital-view/web-ui.log`.
+This legacy state-directory name is retained for existing installations.
 Set `PORTFOLIO_WEB_LOG` to choose a different path. The log is created with
 owner-only permissions; non-web commands keep their normal console output.
 Automatic dashboard data polling also pauses while the browser tab is hidden
@@ -413,7 +416,7 @@ links a system libcurl without WSS reports a clear runtime diagnostic and
 cannot connect to the live feed.
 
 ```bash
-cd /home/ritup2404/baran-capital-view
+cd /home/ritup2404/PortfolioSense
 
 # 1 = CMake build with Conan integration
 ./buildCode.sh 1 --rebuild
@@ -508,7 +511,7 @@ CTest suite; run `pytest --cov` separately when Python coverage is needed.
 ## Run web UI
 
 ```bash
-cd /home/ritup2404/baran-capital-view
+cd /home/ritup2404/PortfolioSense
 ./run.sh --web
 ```
 
@@ -522,7 +525,7 @@ cd /home/ritup2404/baran-capital-view
 
 ## Architecture recommendation
 
-The best architecture for baran-capital-view is a local monolith first, with an internal task scheduler and async worker queue for non-blocking background work.
+The best architecture for PortfolioSense is a local monolith first, with an internal task scheduler and async worker queue for non-blocking background work.
 
 Recommended pattern:
 

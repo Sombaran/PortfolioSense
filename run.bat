@@ -88,7 +88,6 @@ goto launcher_ready
 :build_bazel
 if not defined VCPKG_TRIPLET set "VCPKG_TRIPLET=x64-windows"
 if not defined VCPKG_INSTALL_ROOT if defined LOCALAPPDATA set "VCPKG_INSTALL_ROOT=%LOCALAPPDATA%\baran-capital-view\vcpkg\installed"
-if defined CURL_ROOT set "PATH=%CURL_ROOT%\bin;%PATH%"
 set "EXECUTABLE=%BAZEL_BIN_DIR%\portfolio_health.exe"
 if "%REBUILD%"=="1" (
   call "%ROOT%\buildCode.bat" --bazel --rebuild --skip-tests

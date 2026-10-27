@@ -62,7 +62,7 @@ _PLATFORM_DEFINES = select({
 })
 
 _PROJECT_DEFINES = _PLATFORM_DEFINES + [
-    "PORTFOLIO_HEALTH_VERSION=\\\"2.0.77\\\"",
+    "PORTFOLIO_HEALTH_VERSION=\\\"2.0.78\\\"",
 ]
 
 cc_library(

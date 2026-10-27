@@ -560,12 +560,22 @@ def test_refresh_distinguishes_expired_tokens_from_offline_fallback():
 
 def test_patch_release_version_is_aligned_across_build_and_readmes():
     root = Path(__file__).parents[2]
-    assert "VERSION 2.0.77" in (root / "CMakeLists.txt").read_text()
-    assert 'version = "2.0.77"' in (root / "conanfile.py").read_text()
-    assert 'version = "2.0.77"' in (root / "MODULE.bazel").read_text()
-    assert r'PORTFOLIO_HEALTH_VERSION=\\\"2.0.77\\\"' in (root / "BUILD.bazel").read_text()
-    assert "Version: 2.0.77" in (root / "README.md").read_text()
-    assert "**Version:** `2.0.77`" in (root / "design" / "README.md").read_text()
+    assert "VERSION 2.0.78" in (root / "CMakeLists.txt").read_text()
+    assert 'version = "2.0.78"' in (root / "conanfile.py").read_text()
+    assert 'version = "2.0.78"' in (root / "MODULE.bazel").read_text()
+    assert r'PORTFOLIO_HEALTH_VERSION=\\\"2.0.78\\\"' in (root / "BUILD.bazel").read_text()
+    readme = (root / "README.md").read_text()
+    assert "# PortfolioSense" in readme
+    assert "Version: 2.0.78" in readme
+    assert "**Version:** `2.0.78`" in (root / "design" / "README.md").read_text()
+    release78 = (root / "design" / "RELEASE_NOTES_V2.0.78.md").read_text()
+    assert "PATH" in release78
+    assert "post-login release popup" in release78
+    implementation78 = (root / "design" / "IMPLEMENTATION_SUMMARY_V2.0.78.md").read_text()
+    assert "Kept existing vcpkg cache and web-log locations" in implementation78
+    assert "releaseNoticeV2077Addendum() + releaseNoticeV2078Addendum()" in (
+        root / "src" / "WebServer.cpp"
+    ).read_text()
     release77 = (root / "design" / "RELEASE_NOTES_V2.0.77.md").read_text()
     assert "unknown" in release77
     assert "market-holiday tooltip" in release77
@@ -671,6 +681,12 @@ def test_windows_batch_build_and_launcher_safeguards():
     assert "curl[websockets]:x64-windows" in shell_build
     assert "WSS-enabled libcurl" in build
     assert "if not defined CURL_ROOT if defined VCPKG_ROOT if exist" not in launcher
+    curl_path_update = 'set "PATH=%CURL_ROOT%\\bin;%PATH%"'
+    assert launcher.count(curl_path_update) == 1
+    assert launcher.index(curl_path_update) > launcher.index(
+        'if not defined CURL_ROOT if defined VCPKG_INSTALL_ROOT'
+    )
+    assert "PortfolioSense-vcpkg-" in build
     assert "PORTFOLIO_BAZEL_OUTPUT_DIR" in build
     assert "Get-Process -Name 'portfolio_health'" in build
     assert "Close the running application and retry." in build
